@@ -71,6 +71,11 @@
             return;
         }
 
+        // Ensure the overlay starts inactive to avoid blocking the UI if markup states were altered
+        overlay.hidden = true;
+        overlay.classList.remove('visible');
+        document.body.classList.remove('split-mode-open');
+
         const frames = {
             left: overlay.querySelector('[data-split-frame="left"]'),
             right: overlay.querySelector('[data-split-frame="right"]'),
