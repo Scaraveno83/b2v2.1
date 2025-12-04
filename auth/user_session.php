@@ -151,7 +151,6 @@ function refreshSessionUserFromDb(PDO $pdo): void
             r.can_manage_ticket_categories,
             r.can_manage_users,
             r.can_manage_partners,
-            r.can_handle_live_support,
             r.can_change_settings,
             r.can_manage_calendar,
             r.can_access_admin,

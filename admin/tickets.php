@@ -4,7 +4,6 @@ requirePermission('can_access_admin');
 requirePermission('can_view_tickets');
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../includes/layout.php';
-require_once __DIR__ . '/../includes/live_support.php';
 
 // Tabellen für Ticketsystem anlegen (falls nicht vorhanden)
 
@@ -65,8 +64,6 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS ticket_logs (
     INDEX idx_ticket (ticket_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
-ensureLiveSupportTables($pdo);
-
 // einfache Standardkategorien (falls leer)
 $catCount = (int)$pdo->query("SELECT COUNT(*) FROM ticket_categories")->fetchColumn();
 if ($catCount === 0) {
@@ -83,22 +80,12 @@ $prioFilter   = $_GET['priority'] ?? '';
 $catFilter    = isset($_GET['category_id']) ? (int)$_GET['category_id'] : 0;
 $assignedMe   = isset($_GET['assigned_me']) ? (int)$_GET['assigned_me'] : 0;
 
-$sql = "SELECT t.*, c.name AS category_name, u.username AS creator_name, g.guest_name, g.guest_email, a.username AS assignee_name,
-        lsr.status AS live_status, lsr.scheduled_for AS live_scheduled_for
+$sql = "SELECT t.*, c.name AS category_name, u.username AS creator_name, g.guest_name, g.guest_email, a.username AS assignee_name
         FROM tickets t
         LEFT JOIN ticket_categories c ON t.category_id = c.id
         LEFT JOIN users u ON t.created_by = u.id
         LEFT JOIN guest_tickets g ON t.id = g.ticket_id
         LEFT JOIN users a ON t.assigned_to = a.id
-        LEFT JOIN (
-            SELECT l1.*
-            FROM live_support_requests l1
-            JOIN (
-                SELECT ticket_id, MAX(id) AS max_id
-                FROM live_support_requests
-                GROUP BY ticket_id
-            ) latest ON latest.max_id = l1.id
-        ) lsr ON lsr.ticket_id = t.id
         WHERE 1=1";
 $params = [];
 
@@ -188,7 +175,6 @@ renderHeader('Ticketsystem', 'admin');
                 <th>Kategorie</th>
                 <th>Ersteller</th>
                 <th>Zugewiesen an</th>
-                <th>Live-Co-Browsing</th>
                 <th>Erstellt</th>
             </tr>
         </thead>
@@ -218,18 +204,6 @@ renderHeader('Ticketsystem', 'admin');
                         <?= htmlspecialchars($creator) ?>
                     </td>
                     <td><?= htmlspecialchars($t['assignee_name'] ?? '–') ?></td>
-                    <td>
-                        <?php if (!empty($t['live_status'])): ?>
-                            <span class="ticket-status-<?= htmlspecialchars($t['live_status']) ?>">
-                                <?= htmlspecialchars($t['live_status']) ?>
-                            </span>
-                            <?php if (!empty($t['live_scheduled_for'])): ?>
-                                <div class="muted">Termin: <?= htmlspecialchars(date('d.m H:i', strtotime($t['live_scheduled_for']))) ?></div>
-                            <?php endif; ?>
-                        <?php else: ?>
-                            <span class="muted">–</span>
-                        <?php endif; ?>
-                    </td>
                     <td><?= htmlspecialchars($t['created_at']) ?></td>
                 </tr>
             <?php endforeach; ?>

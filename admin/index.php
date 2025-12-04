@@ -64,9 +64,6 @@ renderHeader('Admin Dashboard', 'admin');
         <?php if (hasPermission('can_manage_ticket_categories')): ?>
             <a class="btn btn-secondary" href="/admin/ticket_categories.php">Ticket-Kategorien</a>
         <?php endif; ?>
-        <?php if (hasPermission('can_handle_live_support')): ?>
-            <a class="btn btn-secondary" href="/admin/live_support.php">Live-Co-Browsing</a>
-        <?php endif; ?>
         <?php if (hasPermission('can_upload_files')): ?>
             <a class="btn btn-secondary" href="/admin/files.php">Dateiverwaltung (Platzhalter)</a>
         <?php endif; ?>

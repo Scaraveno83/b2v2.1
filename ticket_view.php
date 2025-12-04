@@ -6,7 +6,6 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 require_once __DIR__ . '/auth/check_role.php';
 require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/layout.php';
-require_once __DIR__ . '/includes/live_support.php';
 
 checkRole(['admin','employee','partner']);
 requireAbsenceAccess('tickets');
@@ -30,8 +29,6 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS ticket_logs (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_ticket (ticket_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
-
-ensureLiveSupportTables($pdo);
 
 $ticketId = (int)($_GET['id'] ?? 0);
 if ($ticketId <= 0) {
@@ -67,26 +64,9 @@ $comStmt = $pdo->prepare("SELECT tc.*, u.username FROM ticket_comments tc
 $comStmt->execute([$ticketId]);
 $comments = $comStmt->fetchAll();
 
-$liveSupportRequest = latestLiveSupportRequest($pdo, $ticketId);
-$liveSupportError = "";
-$liveSupportSuccess = "";
-
 $error = "";
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['request_live_support'])) {
-        if (isLiveSupportActive($liveSupportRequest)) {
-            $liveSupportError = "Es läuft bereits eine Live-Co-Browsing-Anfrage zu diesem Ticket.";
-        } else {
-            $ins = $pdo->prepare("INSERT INTO live_support_requests (ticket_id, requested_by, status) VALUES (?,?, 'pending')");
-            $ins->execute([$ticketId, $_SESSION['user']['id'] ?? 0]);
-
-            logLiveSupportAction($pdo, $ticketId, $_SESSION['user']['id'] ?? null, 'Live-Co-Browsing angefragt');
-            $liveSupportRequest = latestLiveSupportRequest($pdo, $ticketId);
-            $liveSupportSuccess = "Deine Anfrage wurde übermittelt. Ein Support-Mitarbeiter meldet sich gleich.";
-        }
-    }
-
     if (isset($_POST['add_comment'])) {
         $msg = trim($_POST['comment'] ?? '');
         if ($msg === '') {
@@ -132,58 +112,6 @@ renderHeader('Ticket ansehen', 'my_tickets');
 
     <h3>Beschreibung</h3>
     <p><?= nl2br(htmlspecialchars($ticket['description'])) ?></p>
-
-    <h3>Live-Co-Browsing</h3>
-    <p class="muted">
-        Lass dir live helfen: Wir sehen deine Klicks, übernehmen aber nicht die Steuerung.
-        Du kannst jederzeit eine neue Session anfragen, wenn keine aktive Verbindung besteht.
-    </p>
-    <?php if ($liveSupportError): ?>
-        <div class="error"><?= htmlspecialchars($liveSupportError) ?></div>
-    <?php endif; ?>
-    <?php if ($liveSupportSuccess): ?>
-        <div class="success"><?= htmlspecialchars($liveSupportSuccess) ?></div>
-    <?php endif; ?>
-    <?php if ($liveSupportRequest): ?>
-        <?php
-            $statusLabels = [
-                'pending'   => 'wartet auf Support',
-                'accepted'  => 'angenommen – bitte auf die Live-Unterstützung warten',
-                'scheduled' => 'terminiert',
-                'declined'  => 'abgelehnt',
-                'completed' => 'abgeschlossen',
-            ];
-            $statusText = $statusLabels[$liveSupportRequest['status']] ?? $liveSupportRequest['status'];
-        ?>
-        <div style="margin:10px 0;padding:10px;border-radius:10px;border:1px solid rgba(148,163,184,0.4);background:rgba(15,23,42,0.5);">
-            <strong>Status:</strong>
-            <span class="ticket-status-<?= htmlspecialchars($liveSupportRequest['status']) ?>">
-                <?= htmlspecialchars($liveSupportRequest['status']) ?>
-            </span>
-            <div class="muted" style="margin-top:4px;">
-                <?= htmlspecialchars($statusText) ?>
-                <?php if (!empty($liveSupportRequest['assignee_name'])): ?>
-                    · Betreuer: <?= htmlspecialchars($liveSupportRequest['assignee_name']) ?>
-                <?php endif; ?>
-            </div>
-            <?php if (!empty($liveSupportRequest['scheduled_for'])): ?>
-                <div class="muted">Termin: <?= htmlspecialchars(date('d.m.Y H:i', strtotime($liveSupportRequest['scheduled_for']))) ?></div>
-            <?php endif; ?>
-            <?php if (!empty($liveSupportRequest['note'])): ?>
-                <div class="muted">Hinweis: <?= nl2br(htmlspecialchars($liveSupportRequest['note'])) ?></div>
-            <?php endif; ?>
-            <?php if (!isLiveSupportActive($liveSupportRequest)): ?>
-                <div class="muted" style="margin-top:6px;">Sobald du wieder Hilfe benötigst, kannst du eine neue Live-Co-Browsing-Anfrage senden.</div>
-            <?php endif; ?>
-        </div>
-    <?php endif; ?>
-    <?php if (!$liveSupportRequest || !isLiveSupportActive($liveSupportRequest)): ?>
-        <form method="post" style="margin:8px 0 14px 0;">
-            <button class="btn btn-primary" type="submit" name="request_live_support" value="1">
-                Live-Co-Browsing anfragen
-            </button>
-        </form>
-    <?php endif; ?>
 
     <?php if ($error): ?>
         <div class="error"><?= htmlspecialchars($error) ?></div>

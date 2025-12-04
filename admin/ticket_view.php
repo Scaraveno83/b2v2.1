@@ -4,7 +4,6 @@ requirePermission('can_access_admin');
 requirePermission('can_view_tickets');
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../includes/layout.php';
-require_once __DIR__ . '/../includes/live_support.php';
 
 $id = (int)($_GET['id'] ?? 0);
 if ($id <= 0) {
@@ -27,8 +26,6 @@ if (!$ticket) {
     echo "Ticket nicht gefunden.";
     exit;
 }
-
-ensureLiveSupportTables($pdo);
 
 // Sichtbarkeits-Check: ohne Bearbeitungsrecht nur eigenes Ticket
 if (!hasPermission('can_edit_tickets')) {
@@ -63,11 +60,6 @@ $logStmt = $pdo->prepare("SELECT tl.*, u.username FROM ticket_logs tl
 $logStmt->execute([$id]);
 $logs = $logStmt->fetchAll();
 
-$liveSupportRequest = latestLiveSupportRequest($pdo, $id);
-$liveSupportHistory = liveSupportHistory($pdo, $id, 5);
-$liveSupportError = "";
-$liveSupportSuccess = "";
-
 // Mitarbeiterliste für Zuweisung (Admins + Mitarbeiter)
 $userStmt = $pdo->query("SELECT id, username, role FROM users WHERE role IN ('admin','employee') ORDER BY username ASC");
 $assignableUsers = $userStmt->fetchAll();
@@ -76,82 +68,6 @@ $assignableUsers = $userStmt->fetchAll();
 $error = "";
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (hasPermission('can_handle_live_support')) {
-        if (isset($_POST['live_accept'])) {
-            if ($liveSupportRequest) {
-                $note = trim($_POST['live_note'] ?? '');
-                $upd = $pdo->prepare("UPDATE live_support_requests SET status = 'accepted', assigned_to = ?, scheduled_for = NULL, note = ? WHERE id = ?");
-                $upd->execute([$_SESSION['user']['id'] ?? null, $note, $liveSupportRequest['id']]);
-
-                $details = 'Live-Co-Browsing angenommen';
-                if ($note !== '') {
-                    $details .= ' – Hinweis: ' . $note;
-                }
-                logLiveSupportAction($pdo, $id, $_SESSION['user']['id'] ?? null, $details);
-                $liveSupportSuccess = 'Anfrage angenommen – bitte Live-Unterstützung starten.';
-            } else {
-                $liveSupportError = 'Keine Live-Co-Browsing-Anfrage für dieses Ticket vorhanden.';
-            }
-        } elseif (isset($_POST['live_schedule'])) {
-            if ($liveSupportRequest) {
-                $note = trim($_POST['live_note'] ?? '');
-                $rawDate = trim($_POST['scheduled_for'] ?? '');
-                $dt = $rawDate !== '' ? DateTime::createFromFormat('Y-m-d\TH:i', $rawDate) : false;
-                if (!$dt) {
-                    $liveSupportError = 'Bitte einen gültigen Termin auswählen.';
-                } else {
-                    $scheduledFor = $dt->format('Y-m-d H:i:s');
-                    $upd = $pdo->prepare("UPDATE live_support_requests SET status = 'scheduled', assigned_to = ?, scheduled_for = ?, note = ? WHERE id = ?");
-                    $upd->execute([$_SESSION['user']['id'] ?? null, $scheduledFor, $note, $liveSupportRequest['id']]);
-
-                    $details = 'Live-Co-Browsing terminiert auf ' . $scheduledFor;
-                    if ($note !== '') {
-                        $details .= ' – Hinweis: ' . $note;
-                    }
-                    logLiveSupportAction($pdo, $id, $_SESSION['user']['id'] ?? null, $details);
-                    $liveSupportSuccess = 'Termin gespeichert und Kunde wird im Ticket informiert.';
-                }
-            } else {
-                $liveSupportError = 'Keine Live-Co-Browsing-Anfrage für dieses Ticket vorhanden.';
-            }
-        } elseif (isset($_POST['live_decline'])) {
-            if ($liveSupportRequest) {
-                $note = trim($_POST['live_note'] ?? '');
-                $upd = $pdo->prepare("UPDATE live_support_requests SET status = 'declined', assigned_to = ?, scheduled_for = NULL, note = ? WHERE id = ?");
-                $upd->execute([$_SESSION['user']['id'] ?? null, $note, $liveSupportRequest['id']]);
-
-                $details = 'Live-Co-Browsing abgelehnt';
-                if ($note !== '') {
-                    $details .= ' – Hinweis: ' . $note;
-                }
-                logLiveSupportAction($pdo, $id, $_SESSION['user']['id'] ?? null, $details);
-                $liveSupportSuccess = 'Anfrage wurde abgelehnt.';
-            } else {
-                $liveSupportError = 'Keine Live-Co-Browsing-Anfrage für dieses Ticket vorhanden.';
-            }
-        } elseif (isset($_POST['live_complete'])) {
-            if ($liveSupportRequest) {
-                $note = trim($_POST['live_note'] ?? '');
-                $upd = $pdo->prepare("UPDATE live_support_requests SET status = 'completed', assigned_to = COALESCE(assigned_to, ?), note = ? WHERE id = ?");
-                $upd->execute([$_SESSION['user']['id'] ?? null, $note, $liveSupportRequest['id']]);
-
-                $details = 'Live-Co-Browsing abgeschlossen';
-                if ($note !== '') {
-                    $details .= ' – Hinweis: ' . $note;
-                }
-                logLiveSupportAction($pdo, $id, $_SESSION['user']['id'] ?? null, $details);
-                $liveSupportSuccess = 'Live-Co-Browsing abgeschlossen. Für neue Hilfe bitte neue Anfrage starten.';
-            } else {
-                $liveSupportError = 'Keine Live-Co-Browsing-Anfrage für dieses Ticket vorhanden.';
-            }
-        }
-
-        if ($liveSupportError === '') {
-            $liveSupportRequest = latestLiveSupportRequest($pdo, $id);
-            $liveSupportHistory = liveSupportHistory($pdo, $id, 5);
-        }
-    }
-
     // Statuswechsel
     if (isset($_POST['change_status']) && hasPermission('can_edit_tickets')) {
         $newStatus = $_POST['status'] ?? $ticket['status'];
@@ -277,70 +193,6 @@ renderHeader('Ticket anzeigen', 'admin');
 
     <h3>Beschreibung</h3>
     <p><?= nl2br(htmlspecialchars($ticket['description'])) ?></p>
-
-    <h3>Live-Co-Browsing</h3>
-    <p class="muted">Live-Unterstützung ohne Fernsteuerung: Anfragen annehmen, terminieren oder abschließen.</p>
-    <?php if ($liveSupportError): ?>
-        <div class="error"><?= htmlspecialchars($liveSupportError) ?></div>
-    <?php endif; ?>
-    <?php if ($liveSupportSuccess): ?>
-        <div class="success"><?= htmlspecialchars($liveSupportSuccess) ?></div>
-    <?php endif; ?>
-    <?php if ($liveSupportRequest): ?>
-        <div style="margin:10px 0;padding:10px;border-radius:10px;border:1px solid rgba(148,163,184,0.4);background:rgba(15,23,42,0.5);">
-            <strong>Status:</strong>
-            <span class="ticket-status-<?= htmlspecialchars($liveSupportRequest['status']) ?>">
-                <?= htmlspecialchars($liveSupportRequest['status']) ?>
-            </span>
-            <div class="muted" style="margin-top:4px;">
-                Kunde: <?= htmlspecialchars($liveSupportRequest['requester_name'] ?? 'Unbekannt') ?>
-                <?php if (!empty($liveSupportRequest['assignee_name'])): ?>
-                    · Bearbeiter: <?= htmlspecialchars($liveSupportRequest['assignee_name']) ?>
-                <?php endif; ?>
-            </div>
-            <?php if (!empty($liveSupportRequest['scheduled_for'])): ?>
-                <div class="muted">Termin: <?= htmlspecialchars(date('d.m.Y H:i', strtotime($liveSupportRequest['scheduled_for']))) ?></div>
-            <?php endif; ?>
-            <?php if (!empty($liveSupportRequest['note'])): ?>
-                <div class="muted">Hinweis: <?= nl2br(htmlspecialchars($liveSupportRequest['note'])) ?></div>
-            <?php endif; ?>
-            <div class="muted">Zuletzt aktualisiert: <?= htmlspecialchars($liveSupportRequest['updated_at']) ?></div>
-        </div>
-    <?php else: ?>
-        <p class="muted">Noch keine Live-Co-Browsing-Anfrage für dieses Ticket.</p>
-    <?php endif; ?>
-
-    <?php if (hasPermission('can_handle_live_support')): ?>
-        <form method="post" class="field-group" style="margin-bottom:16px;">
-            <label for="scheduled_for">Termin (für Verschieben)</label>
-            <input type="datetime-local" id="scheduled_for" name="scheduled_for">
-            <label for="live_note">Notiz an Kunden (optional)</label>
-            <textarea id="live_note" name="live_note" rows="2"></textarea>
-            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">
-                <button class="btn btn-primary" type="submit" name="live_accept" value="1">Annehmen</button>
-                <button class="btn btn-secondary" type="submit" name="live_schedule" value="1">Auf später verschieben</button>
-                <button class="btn btn-danger" type="submit" name="live_decline" value="1">Ablehnen</button>
-                <button class="btn btn-secondary" type="submit" name="live_complete" value="1">Support beenden</button>
-            </div>
-        </form>
-    <?php endif; ?>
-
-    <?php if ($liveSupportHistory): ?>
-        <h4>Letzte Live-Co-Browsing-Aktivitäten</h4>
-        <ul>
-            <?php foreach ($liveSupportHistory as $ls): ?>
-                <li class="muted" style="font-size:0.85rem;">
-                    <?= htmlspecialchars($ls['updated_at']) ?> · Status <?= htmlspecialchars($ls['status']) ?>
-                    <?php if (!empty($ls['assignee_name'])): ?>
-                        · Bearbeiter: <?= htmlspecialchars($ls['assignee_name']) ?>
-                    <?php endif; ?>
-                    <?php if (!empty($ls['note'])): ?>
-                        · <?= htmlspecialchars(mb_strimwidth($ls['note'], 0, 80, '…')) ?>
-                    <?php endif; ?>
-                </li>
-            <?php endforeach; ?>
-        </ul>
-    <?php endif; ?>
 
     <?php if (hasPermission('can_edit_tickets')): ?>
         <h3>Ticket-Einstellungen</h3>
