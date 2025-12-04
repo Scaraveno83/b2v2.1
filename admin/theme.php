@@ -11,6 +11,7 @@ $draftSettings = loadThemeDraft($pdo);
 $templates = getThemeTemplates();
 $fontOptions = getBrandFontOptions();
 $styleOptions = getBrandStyleOptions();
+$layoutOptions = getLayoutVariantOptions();
 $message = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -128,6 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'brand_font_style' => $updatedValues['brand_font_style'] ?? $settings['brand_font_style'],
                 'brand_font_size' => $updatedValues['brand_font_size'] ?? $settings['brand_font_size'],
                 'brand_letter_spacing' => $updatedValues['brand_letter_spacing'] ?? $settings['brand_letter_spacing'],
+                'layout_variant' => $updatedValues['layout_variant'] ?? $settings['layout_variant'],
             ];
             $settings = saveThemeSettings($pdo, array_merge(getDefaultThemeSettings(), $branding));
             $message = ['type' => 'success', 'text' => 'Farben wurden auf die Standardwerte zurückgesetzt.'];
@@ -161,6 +163,9 @@ renderHeader('Design & Branding', 'admin');
                 <div>
                     <h4><?= htmlspecialchars($template['name']) ?></h4>
                     <span class="muted"><?= htmlspecialchars($template['description']) ?></span>
+                    <?php if (!empty($tpl['layout_variant']) && isset($layoutOptions[$tpl['layout_variant']])): ?>
+                        <span class="badge">Layout: <?= htmlspecialchars($layoutOptions[$tpl['layout_variant']]) ?></span>
+                    <?php endif; ?>
                 </div>
                 <div class="swatch-row">
                     <div class="swatch" style="background: <?= htmlspecialchars($tpl['bg1']) ?>;"></div>
@@ -221,25 +226,35 @@ renderHeader('Design & Branding', 'admin');
             <label>Panel-Name
                 <input type="text" name="brand_name" value="<?= htmlspecialchars($settings['brand_name']) ?>" maxlength="128" required>
             </label>
-            <label>Schriftart für den Namen
-                <select name="brand_font">
-                    <?php foreach ($fontOptions as $key => $font): ?>
-                        <option value="<?= htmlspecialchars($key) ?>" <?= ($settings['brand_font'] ?? '') === $key ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($font['label']) ?>
+            <label>Schriftart für den Namen␊
+                <select name="brand_font">␊
+                    <?php foreach ($fontOptions as $key => $font): ?>␊
+                        <option value="<?= htmlspecialchars($key) ?>" <?= ($settings['brand_font'] ?? '') === $key ? 'selected' : '' ?>>␊
+                            <?= htmlspecialchars($font['label']) ?>␊
                         </option>
                     <?php endforeach; ?>
                 </select>
                 <span class="muted">Wähle aus breiten, Outline-, Pixel- oder Serif-Display-Schriften für markante Logos.</span>
             </label>
-            <label>Style-Effekt
-                <select name="brand_font_style">
-                    <?php foreach ($styleOptions as $key => $label): ?>
-                        <option value="<?= htmlspecialchars($key) ?>" <?= ($settings['brand_font_style'] ?? '') === $key ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($label) ?>
+            <label>Style-Effekt␊
+                <select name="brand_font_style">␊
+                    <?php foreach ($styleOptions as $key => $label): ?>␊
+                        <option value="<?= htmlspecialchars($key) ?>" <?= ($settings['brand_font_style'] ?? '') === $key ? 'selected' : '' ?>>␊
+                            <?= htmlspecialchars($label) ?>␊
                         </option>
                     <?php endforeach; ?>
                 </select>
                 <span class="muted">Neon, Chrom, Retro, Hologramm, Glitch, Laser-Scan, Aurora-Schimmer oder pulsierende Outline – auch animiert – stehen zur Auswahl.</span>
+            </label>
+            <label>Layout-Modus
+                <select name="layout_variant">
+                    <?php foreach ($layoutOptions as $key => $label): ?>
+                        <option value="<?= htmlspecialchars($key) ?>" <?= ($settings['layout_variant'] ?? 'standard') === $key ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($label) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <span class="muted">Steuert Navigation, Kartenlayout und Form-Feeling (Standard, Split Panels, Terminal Rail, Floating Board).</span>
             </label>
             <label>Schriftgröße
                 <input type="text" name="brand_font_size" value="<?= htmlspecialchars($settings['brand_font_size']) ?>" required>
@@ -462,6 +477,9 @@ renderHeader('Design & Branding', 'admin');
         if (accentYellow) {
             setVar('--accent-yellow-rgb', accentYellow.join(','));
         }
+
+        const layoutVariant = formData.get('layout_variant') || 'standard';
+        document.body.dataset.layoutVariant = layoutVariant;
 
         const brandName = formData.get('brand_name') || '';
         if (logoText && brandName) {
