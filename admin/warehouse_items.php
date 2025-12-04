@@ -168,7 +168,7 @@ renderHeader('Lagerartikel', 'admin');
     <?php else: ?>
         <div class="item-grid">
             <?php foreach ($items as $item): ?>
-                <div class="item-card open" data-item-card>
+                <div class="item-card" data-item-card>
                     <header data-toggle-card>
                         <div class="card-title">
                             <div><strong><?= htmlspecialchars($item['name']) ?></strong></div>
