@@ -28,6 +28,11 @@ renderHeader('Mitarbeiterbereich', 'staff');
     <p class="muted">Greife auf dein zugewiesenes Lager zu, um Bestände zu prüfen und Artikel zu verbuchen.</p>
     <a class="btn btn-primary" href="/staff/warehouses.php">Zum Lagersystem</a>
 </div>
+<div class="card">
+    <div class="card-header">Farming-Aufgaben</div>
+    <p class="muted">Sieh dir automatisch generierte Farming-Aufgaben an, wenn farmbare Artikel unter den Mindestbestand fallen.</p>
+    <a class="btn btn-primary" href="/staff/farming.php">Farming-Aufgaben öffnen</a>
+</div>
 <?php endif; ?>
 <?php if (hasPermission('can_log_partner_services')): ?>
 <div class="card">

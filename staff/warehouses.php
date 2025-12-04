@@ -106,6 +106,9 @@ renderHeader('Lager', 'warehouses');
             <h3><?= htmlspecialchars($currentWarehouse['name']) ?></h3>
             <p class="muted"><?= htmlspecialchars($currentWarehouse['description'] ?? '') ?></p>
             <p class="muted">Mindest- und Höchstbestände gelten global über alle Lager; die Warnhinweise beziehen den Gesamtbestand ein.</p>
+            <div class="toolbar" style="margin:8px 0;">
+                <a class="btn" href="/staff/farming.php">Farming-Aufgaben anzeigen</a>
+            </div>
 
             <?php if ($items): ?>
                 <div class="action-panel">
@@ -192,6 +195,9 @@ renderHeader('Lager', 'warehouses');
                                 <div class="badge">Gesamt: <?= (int)$item['total_stock'] ?></div>
                                 <div class="badge">Min <?= (int)$item['min_stock'] ?></div>
                                 <div class="badge">Max <?= (int)$item['max_stock'] ?></div>
+                                <?php if (!empty($item['farmable'])): ?>
+                                    <div class="badge" style="background:rgba(76,175,80,0.15); color:#b2ffb2;">Farmbar</div>
+                                <?php endif; ?>
                                 <?php if ($item['total_stock'] < $item['min_stock']): ?>
                                     <div class="error" style="margin-top:6px;">Unter Mindestbestand (gesamt)!</div>
                                 <?php elseif ($item['max_stock'] > 0 && $item['total_stock'] > $item['max_stock']): ?>
