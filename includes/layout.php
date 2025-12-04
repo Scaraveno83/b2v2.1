@@ -23,6 +23,7 @@ function renderHeader($title, $currentPage) {
         <script src="/assets/theme.js" defer></script>
         <script src="/assets/notifications.js" defer></script>
         <script src="/assets/news.js" defer></script>
+        <script src="/assets/split.js" defer></script>
     </head>
     <body data-user-role="<?= isset($_SESSION['user']['role']) ? htmlspecialchars($_SESSION['user']['role']) : 'guest' ?>"
           data-user-id="<?= isset($_SESSION['user']['id']) ? (int)$_SESSION['user']['id'] : 'anon' ?>"
@@ -63,6 +64,9 @@ function renderHeader($title, $currentPage) {
                     </div>
                 </a>
             <?php endif; ?>
+            <button class="split-toggle" type="button" data-split-toggle aria-expanded="false">
+                🪟 Multi-Window
+            </button>
             <button class="theme-toggle" type="button" onclick="toggleThemeMode()">
                 <span>🌗</span> Mode
             </button>
@@ -125,6 +129,36 @@ function renderHeader($title, $currentPage) {
 
 function renderFooter() {
     ?>
+    </div>
+    <div class="split-overlay" data-split-overlay hidden>
+        <div class="split-overlay-panel">
+            <div class="split-overlay-head">
+                <div>
+                    <p class="eyebrow">Experimentell</p>
+                    <h3>Multi-Window Modus</h3>
+                    <p class="muted">Wähle zwei Bereiche aus, um sie nebeneinander im Split-Screen zu sehen.</p>
+                </div>
+                <button class="split-close" type="button" data-split-close aria-label="Schließen">×</button>
+            </div>
+            <div class="split-controls">
+                <label class="split-control">
+                    <span>Fenster A</span>
+                    <select data-split-select data-split-target="left"></select>
+                </label>
+                <label class="split-control">
+                    <span>Fenster B</span>
+                    <select data-split-select data-split-target="right"></select>
+                </label>
+            </div>
+            <div class="split-frames">
+                <div class="split-frame" aria-label="Linkes Fenster">
+                    <iframe data-split-frame="left" title="Linkes Fenster"></iframe>
+                </div>
+                <div class="split-frame" aria-label="Rechtes Fenster">
+                    <iframe data-split-frame="right" title="Rechtes Fenster"></iframe>
+                </div>
+            </div>
+        </div>
     </div>
     <footer>Ultra Neon Panel — Rollen, Rechte & Ticketsystem</footer>
     </body>
