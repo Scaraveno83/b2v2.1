@@ -105,6 +105,7 @@ renderHeader('Lager', 'warehouses');
         <?php if ($currentWarehouse): ?>
             <h3><?= htmlspecialchars($currentWarehouse['name']) ?></h3>
             <p class="muted"><?= htmlspecialchars($currentWarehouse['description'] ?? '') ?></p>
+            <p class="muted">Mindest- und Höchstbestände gelten global über alle Lager; die Warnhinweise beziehen den Gesamtbestand ein.</p>
 
             <?php if ($items): ?>
                 <div class="action-panel">
@@ -116,7 +117,7 @@ renderHeader('Lager', 'warehouses');
                             <select id="item_id" name="item_id" required>
                                 <?php foreach ($items as $item): ?>
                                     <option value="<?= (int)$item['id'] ?>">
-                                        <?= htmlspecialchars($item['name']) ?> (<?= (int)$item['current_stock'] ?>)
+                                        <?= htmlspecialchars($item['name']) ?> (<?= (int)$item['current_stock'] ?> im Lager, <?= (int)$item['total_stock'] ?> gesamt)
                                     </option>
                                 <?php endforeach; ?>
                             </select>
@@ -185,11 +186,17 @@ renderHeader('Lager', 'warehouses');
                                     <div class="stock-number"><?= (int)$item['current_stock'] ?></div>
                                     <div>
                                         <div>Stück aktuell verfügbar</div>
-                                        <div class="muted">Bestand für diesen Artikel</div>
+                                        <div class="muted">Bestand in diesem Lager</div>
                                     </div>
                                 </div>
+                                <div class="badge">Gesamt: <?= (int)$item['total_stock'] ?></div>
                                 <div class="badge">Min <?= (int)$item['min_stock'] ?></div>
                                 <div class="badge">Max <?= (int)$item['max_stock'] ?></div>
+                                <?php if ($item['total_stock'] < $item['min_stock']): ?>
+                                    <div class="error" style="margin-top:6px;">Unter Mindestbestand (gesamt)!</div>
+                                <?php elseif ($item['max_stock'] > 0 && $item['total_stock'] > $item['max_stock']): ?>
+                                    <div class="notice" style="margin-top:6px;">Über Höchstbestand (gesamt).</div>
+                                <?php endif; ?>
                             </div>
 
                             <div class="muted">Buchungen bitte über das Dropdown oben vornehmen.</div>
