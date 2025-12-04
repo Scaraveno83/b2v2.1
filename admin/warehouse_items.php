@@ -29,11 +29,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $min = (int)($_POST['min_stock'] ?? 0);
         $max = (int)($_POST['max_stock'] ?? 0);
         $stock = (int)($_POST['current_stock'] ?? 0);
+        $farmable = isset($_POST['farmable']) && $_POST['farmable'] === '1';
 
         if ($name === '') {
             $message = 'Artikelname darf nicht leer sein.';
         } else {
-            $itemId = createOrUpdateItem($pdo, $name, $description, $min, $max);
+            $itemId = createOrUpdateItem($pdo, $name, $description, $min, $max, $farmable);
             ensureWarehouseItemLink($pdo, $warehouseId, $itemId);
             $note = 'Erstanlage';
             if ($stock !== 0) {
@@ -42,6 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $currentStock = getWarehouseStock($pdo, $warehouseId, $itemId);
                 logWarehouseChange($pdo, $warehouseId, $itemId, $_SESSION['user']['id'] ?? null, 0, 'create', $note, $currentStock);
             }
+            syncFarmingTasksForItem($pdo, $itemId);
             $message = 'Artikel angelegt oder bestehender Artikel aktualisiert.';
         }
     }
@@ -52,12 +54,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $description = trim($_POST['description'] ?? '');
         $min = (int)($_POST['min_stock'] ?? 0);
         $max = (int)($_POST['max_stock'] ?? 0);
+        $farmable = isset($_POST['farmable']) && $_POST['farmable'] === '1';
 
         if ($name === '') {
             $message = 'Artikelname darf nicht leer sein.';
         } else {
-            $stmt = $pdo->prepare('UPDATE items SET name = ?, description = ?, min_stock = ?, max_stock = ? WHERE id = ?');
-            $stmt->execute([$name, $description, $min, $max, $itemId]);
+            $stmt = $pdo->prepare('UPDATE items SET name = ?, description = ?, min_stock = ?, max_stock = ?, farmable = ? WHERE id = ?');
+            $stmt->execute([$name, $description, $min, $max, $farmable ? 1 : 0, $itemId]);
+            syncFarmingTasksForItem($pdo, $itemId);
             $message = 'Artikel aktualisiert (global).';
         }
     }
@@ -132,6 +136,13 @@ renderHeader('Lagerartikel', 'admin');
             <label for="max_stock">Höchstbestand</label>
             <input id="max_stock" name="max_stock" type="number" min="0" value="0">
         </div>
+        <div class="field-group" style="display:flex; flex-direction:column; justify-content:center; gap:4px;">
+            <label class="checkbox">
+                <input type="checkbox" name="farmable" value="1">
+                <span>Artikel ist farmbar</span>
+            </label>
+            <small class="muted">Nur farmbare Artikel erzeugen Farming-Aufgaben, wenn der Mindestbestand unterschritten wird.</small>
+        </div>
         <div class="field-group">
             <label for="current_stock">Startbestand</label>
             <input id="current_stock" name="current_stock" type="number" min="0" value="0">
@@ -188,6 +199,9 @@ renderHeader('Lagerartikel', 'admin');
                             <div><strong><?= (int)$item['total_stock'] ?></strong> Stück gesamt</div>
                             <div class="badge">Min <?= (int)$item['min_stock'] ?></div>
                             <div class="badge">Max <?= (int)$item['max_stock'] ?></div>
+                            <?php if ($item['farmable']): ?>
+                                <div class="badge" style="background:rgba(76,175,80,0.15); color:#b2ffb2;">Farmbar</div>
+                            <?php endif; ?>
                             <?php if ($item['total_stock'] < $item['min_stock']): ?>
                                 <div class="error" style="margin-top:6px;">Unter Mindestbestand (gesamt)!</div>
                             <?php elseif ($item['max_stock'] > 0 && $item['total_stock'] > $item['max_stock']): ?>
@@ -227,6 +241,10 @@ renderHeader('Lagerartikel', 'admin');
                                     <input type="number" name="max_stock" min="0" value="<?= (int)$item['max_stock'] ?>" title="Höchstbestand">
                                 </div>
                                 <input type="text" name="description" value="<?= htmlspecialchars($item['description'] ?? '') ?>" placeholder="Beschreibung">
+                                <label class="checkbox" style="margin:4px 0;">
+                                    <input type="checkbox" name="farmable" value="1" <?= $item['farmable'] ? 'checked' : '' ?>>
+                                    <span>Artikel ist farmbar</span>
+                                </label>
                                 <button class="btn" type="submit">Details speichern</button>
                             </form>
 
