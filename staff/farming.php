@@ -11,16 +11,13 @@ requirePermission('can_use_warehouses');
 ensureWarehouseSchema($pdo);
 
 $user = $_SESSION['user'];
-$warehouses = getAccessibleWarehouses($pdo, $user);
-$warehouseIds = array_map('intval', array_column($warehouses, 'id'));
-
 $message = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     if ($action === 'mark_done') {
         $taskId = (int)($_POST['task_id'] ?? 0);
-        if (markFarmingTaskDone($pdo, $taskId, $user['id'] ?? null, $warehouseIds)) {
+        if (markFarmingTaskDone($pdo, $taskId, $user['id'] ?? null, null)) {
             $message = 'Aufgabe wurde als erledigt markiert.';
         } else {
             $message = 'Aufgabe konnte nicht aktualisiert werden.';
@@ -29,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 syncAllFarmingTasks($pdo);
-$tasks = getOpenFarmingTasks($pdo, $warehouseIds);
+$tasks = getOpenFarmingTasks($pdo, null);
 
 renderHeader('Farming-Aufgaben', 'staff');
 ?>
