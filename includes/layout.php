@@ -26,7 +26,8 @@ function renderHeader($title, $currentPage) {
     </head>
     <body data-user-role="<?= isset($_SESSION['user']['role']) ? htmlspecialchars($_SESSION['user']['role']) : 'guest' ?>"
           data-user-id="<?= isset($_SESSION['user']['id']) ? (int)$_SESSION['user']['id'] : 'anon' ?>"
-          data-news-scope="auto">
+          data-news-scope="auto"
+          data-layout-variant="<?= htmlspecialchars($themeSettings['layout_variant'] ?? 'standard') ?>">
     <header>
         <div class="logo">
             <?php if (!empty($brandLogo)): ?>

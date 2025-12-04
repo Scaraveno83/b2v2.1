@@ -11,6 +11,7 @@ function getAllPermissions() {
         'can_manage_ticket_categories'=> 'Ticket-Kategorien verwalten',
         'can_manage_users'            => 'Benutzer verwalten',
         'can_manage_partners'         => 'Partner verwalten',
+        'can_handle_live_support'     => 'Live-Co-Browsing-Anfragen bearbeiten',
         'can_change_settings'         => 'Einstellungen ändern',
         'can_manage_calendar'         => 'Kalender & Abwesenheiten verwalten',
         'can_access_admin'            => 'Adminbereich betreten',

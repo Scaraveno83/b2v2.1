@@ -1963,3 +1963,269 @@ body.light .emoji-palette button {
     padding: 3px 8px;
     font-size: 0.8rem;
 }
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.08);
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+/* Layout variants */
+body[data-layout-variant="split-panels"] {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    grid-template-rows: auto 1fr auto;
+    grid-template-areas:
+        "header header"
+        "nav container"
+        "footer footer";
+    gap: 16px;
+    padding: 16px;
+}
+
+body[data-layout-variant="split-panels"] > header {
+    grid-area: header;
+    position: sticky;
+    top: 0;
+    border-radius: 18px;
+    padding: 18px;
+    backdrop-filter: blur(16px) saturate(150%);
+}
+
+body[data-layout-variant="split-panels"] > nav {
+    grid-area: nav;
+    align-self: start;
+    position: sticky;
+    top: 90px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 18px;
+    background: linear-gradient(160deg, rgba(255,255,255,0.03), rgba(255,255,255,0.06));
+    border: 1px solid var(--surface-border);
+    border-radius: 18px;
+    box-shadow: 0 24px 48px rgba(0,0,0,0.25);
+}
+
+body[data-layout-variant="split-panels"] nav .nav-link {
+    width: 100%;
+    justify-content: space-between;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+}
+
+body[data-layout-variant="split-panels"] nav .nav-link.active {
+    background: rgba(var(--accent-cyan-rgb),0.12);
+    border-color: rgba(var(--accent-cyan-rgb),0.25);
+    box-shadow: 0 12px 30px rgba(var(--accent-cyan-rgb),0.18);
+}
+
+body[data-layout-variant="split-panels"] > .container {
+    grid-area: container;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 18px;
+}
+
+body[data-layout-variant="split-panels"] .card {
+    background: linear-gradient(160deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+    border-radius: 22px;
+    box-shadow: var(--shadow-card);
+    border: 1px solid rgba(255,255,255,0.08);
+}
+
+body[data-layout-variant="split-panels"] .form-grid {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 18px;
+}
+
+body[data-layout-variant="split-panels"] input,
+body[data-layout-variant="split-panels"] select,
+body[data-layout-variant="split-panels"] textarea {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 14px;
+    padding: 12px 14px;
+}
+
+body[data-layout-variant="split-panels"] .btn {
+    border-radius: 14px;
+    padding: 12px 16px;
+}
+
+body[data-layout-variant="terminal-rail"] {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    grid-template-rows: auto 1fr auto;
+    grid-template-areas:
+        "header header"
+        "nav container"
+        "footer footer";
+    gap: 12px;
+    padding: 12px 12px 18px;
+}
+
+body[data-layout-variant="terminal-rail"] > header {
+    grid-area: header;
+    position: sticky;
+    top: 0;
+    border-radius: 12px;
+    padding: 12px 16px;
+    background: linear-gradient(90deg, rgba(0,0,0,0.9), rgba(0,0,0,0.75));
+    border: 1px solid rgba(var(--accent-cyan-rgb),0.35);
+    box-shadow: none;
+}
+
+body[data-layout-variant="terminal-rail"] > nav {
+    grid-area: nav;
+    align-self: start;
+    position: sticky;
+    top: 72px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 14px 12px;
+    background: rgba(0,0,0,0.85);
+    border: 1px solid rgba(var(--accent-cyan-rgb),0.35);
+    border-radius: 10px;
+    box-shadow: inset 0 0 0 1px rgba(var(--accent-cyan-rgb),0.18);
+}
+
+body[data-layout-variant="terminal-rail"] nav .nav-link {
+    font-family: 'Press Start 2P', 'VT323', 'Courier New', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    padding: 10px 8px;
+    border-radius: 8px;
+    border: 1px solid rgba(var(--accent-cyan-rgb),0.32);
+    background: rgba(0,0,0,0.65);
+    box-shadow: none;
+}
+
+body[data-layout-variant="terminal-rail"] nav .nav-link.active {
+    background: rgba(0,0,0,0.9);
+    border-color: rgba(var(--accent-cyan-rgb),0.6);
+    box-shadow: 0 0 0 1px rgba(var(--accent-cyan-rgb),0.4);
+}
+
+body[data-layout-variant="terminal-rail"] > .container {
+    grid-area: container;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    gap: 14px;
+}
+
+body[data-layout-variant="terminal-rail"] .card {
+    background: rgba(0,0,0,0.8);
+    border: 1px solid rgba(var(--accent-cyan-rgb),0.3);
+    border-radius: 10px;
+    box-shadow: none;
+    font-family: 'Press Start 2P', 'VT323', 'Courier New', monospace;
+    letter-spacing: 0.02em;
+}
+
+body[data-layout-variant="terminal-rail"] .card h2,
+body[data-layout-variant="terminal-rail"] .card h3,
+body[data-layout-variant="terminal-rail"] .card p,
+body[data-layout-variant="terminal-rail"] .card label,
+body[data-layout-variant="terminal-rail"] .card input,
+body[data-layout-variant="terminal-rail"] .card select,
+body[data-layout-variant="terminal-rail"] .card textarea {
+    text-transform: uppercase;
+    font-size: 0.82rem;
+}
+
+body[data-layout-variant="terminal-rail"] input,
+body[data-layout-variant="terminal-rail"] select,
+body[data-layout-variant="terminal-rail"] textarea {
+    background: #030504;
+    border: 1px solid rgba(var(--accent-cyan-rgb),0.45);
+    color: var(--text_main);
+    border-radius: 6px;
+    padding: 10px;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.6);
+}
+
+body[data-layout-variant="terminal-rail"] .btn {
+    border-radius: 6px;
+    text-transform: uppercase;
+    border: 1px solid rgba(var(--accent-cyan-rgb),0.6);
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.6);
+}
+
+body[data-layout-variant="floating-board"] {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px 18px 28px;
+}
+
+body[data-layout-variant="floating-board"] > header {
+    border-radius: 18px;
+    padding: 18px;
+    backdrop-filter: blur(10px) saturate(130%);
+    box-shadow: var(--shadow-card);
+}
+
+body[data-layout-variant="floating-board"] > nav {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 10px;
+    padding: 6px 6px 0;
+}
+
+body[data-layout-variant="floating-board"] nav .nav-link {
+    justify-content: center;
+    padding: 12px 14px;
+    border-radius: var(--radius-pill);
+    background: var(--surface);
+    border: 1px solid rgba(255,255,255,0.12);
+    box-shadow: 0 14px 24px rgba(0,0,0,0.24);
+}
+
+body[data-layout-variant="floating-board"] nav .nav-link.active {
+    background: linear-gradient(120deg, rgba(var(--accent-magenta-rgb),0.16), rgba(var(--accent-cyan-rgb),0.16));
+    border-color: rgba(var(--accent-magenta-rgb),0.32);
+}
+
+body[data-layout-variant="floating-board"] > .container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 16px;
+}
+
+body[data-layout-variant="floating-board"] .card {
+    background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03));
+    border-radius: 24px;
+    box-shadow: var(--shadow-card);
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+body[data-layout-variant="floating-board"] .form-grid {
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+}
+
+body[data-layout-variant="floating-board"] input,
+body[data-layout-variant="floating-board"] select,
+body[data-layout-variant="floating-board"] textarea {
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.12);
+    padding: 12px 14px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.18);
+}
+
+body[data-layout-variant="floating-board"] .btn {
+    border-radius: 14px;
+    box-shadow: 0 14px 28px rgba(0,0,0,0.16);
+}
