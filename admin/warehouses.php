@@ -9,9 +9,9 @@ require_once __DIR__ . '/../includes/warehouse_service.php';
 ensureWarehouseSchema($pdo);
 
 // Warehouses mit Item-Anzahl laden
-$stmt = $pdo->query("SELECT w.*, COUNT(wi.id) AS item_count
+$stmt = $pdo->query("SELECT w.*, COUNT(DISTINCT wis.item_id) AS item_count
     FROM warehouses w
-    LEFT JOIN warehouse_items wi ON wi.warehouse_id = w.id
+    LEFT JOIN warehouse_item_stocks wis ON wis.warehouse_id = w.id
     GROUP BY w.id
     ORDER BY w.name ASC");
 $warehouses = $stmt->fetchAll();

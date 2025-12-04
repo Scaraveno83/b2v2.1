@@ -33,11 +33,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($name === '') {
             $message = 'Artikelname darf nicht leer sein.';
         } else {
-            $stmt = $pdo->prepare('INSERT INTO warehouse_items (warehouse_id, name, description, min_stock, max_stock, current_stock) VALUES (?,?,?,?,?,?)');
-            $stmt->execute([$warehouseId, $name, $description, $min, $max, $stock]);
-            $itemId = (int)$pdo->lastInsertId();
-            logWarehouseChange($pdo, $warehouseId, $itemId, $_SESSION['user']['id'] ?? null, $stock, 'create', 'Erstanlage', $stock);
-            $message = 'Artikel angelegt.';
+            $itemId = createOrUpdateItem($pdo, $name, $description, $min, $max);
+            ensureWarehouseItemLink($pdo, $warehouseId, $itemId);
+            $note = 'Erstanlage';
+            if ($stock !== 0) {
+                adjustWarehouseStock($pdo, $warehouseId, $itemId, $stock, 'create', $_SESSION['user']['id'] ?? null, $note);
+            } else {
+                $currentStock = getWarehouseStock($pdo, $warehouseId, $itemId);
+                logWarehouseChange($pdo, $warehouseId, $itemId, $_SESSION['user']['id'] ?? null, 0, 'create', $note, $currentStock);
+            }
+            $message = 'Artikel angelegt oder bestehender Artikel aktualisiert.';
         }
     }
 
@@ -51,16 +56,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($name === '') {
             $message = 'Artikelname darf nicht leer sein.';
         } else {
-            $stmt = $pdo->prepare('UPDATE warehouse_items SET name = ?, description = ?, min_stock = ?, max_stock = ? WHERE id = ? AND warehouse_id = ?');
-            $stmt->execute([$name, $description, $min, $max, $itemId, $warehouseId]);
-            $message = 'Artikel aktualisiert.';
+            $stmt = $pdo->prepare('UPDATE items SET name = ?, description = ?, min_stock = ?, max_stock = ? WHERE id = ?');
+            $stmt->execute([$name, $description, $min, $max, $itemId]);
+            $message = 'Artikel aktualisiert (global).';
         }
     }
 
     if ($action === 'delete_item') {
         $itemId = (int)($_POST['item_id'] ?? 0);
-        $pdo->prepare('DELETE FROM warehouse_items WHERE id = ? AND warehouse_id = ?')->execute([$itemId, $warehouseId]);
-        $message = 'Artikel gelöscht.';
+        deleteItemCompletely($pdo, $itemId);
+        $message = 'Artikel gelöscht (entfernt aus allen Lagern).';
     }
 
     if (in_array($action, ['add_stock', 'remove_stock'], true)) {
@@ -85,7 +90,7 @@ renderHeader('Lagerartikel', 'admin');
 ?>
 <div class="card">
     <h2>Artikel für <?= htmlspecialchars($warehouse['name']) ?></h2>
-    <p class="muted">Pflege Bestände und Mindest-/Höchstwerte für dieses Lager.</p>
+    <p class="muted">Artikel werden global mit einem Min-/Max-Bestand angelegt. Die Bestandswarnungen beziehen den Gesamtbestand über alle Lager ein.</p>
     <?php if ($message): ?>
         <div class="notice"><?= htmlspecialchars($message) ?></div>
     <?php endif; ?>
@@ -177,15 +182,16 @@ renderHeader('Lagerartikel', 'admin');
                         </div>
                     </header>
 
-                    <div class="item-body">
+                   <div class="item-body">
                         <div class="stock">
-                            <div><strong><?= (int)$item['current_stock'] ?></strong> Stück</div>
+                            <div><strong><?= (int)$item['current_stock'] ?></strong> Stück im Lager</div>
+                            <div><strong><?= (int)$item['total_stock'] ?></strong> Stück gesamt</div>
                             <div class="badge">Min <?= (int)$item['min_stock'] ?></div>
                             <div class="badge">Max <?= (int)$item['max_stock'] ?></div>
-                            <?php if ($item['current_stock'] < $item['min_stock']): ?>
-                                <div class="error" style="margin-top:6px;">Unter Mindestbestand!</div>
-                            <?php elseif ($item['max_stock'] > 0 && $item['current_stock'] > $item['max_stock']): ?>
-                                <div class="notice" style="margin-top:6px;">Über Höchstbestand.</div>
+                            <?php if ($item['total_stock'] < $item['min_stock']): ?>
+                                <div class="error" style="margin-top:6px;">Unter Mindestbestand (gesamt)!</div>
+                            <?php elseif ($item['max_stock'] > 0 && $item['total_stock'] > $item['max_stock']): ?>
+                                <div class="notice" style="margin-top:6px;">Über Höchstbestand (gesamt).</div>
                             <?php endif; ?>
                         </div>
 
@@ -224,12 +230,20 @@ renderHeader('Lagerartikel', 'admin');
                                 <button class="btn" type="submit">Details speichern</button>
                             </form>
 
-                            <form method="post" onsubmit="return confirm('Artikel wirklich löschen?');">
+                            <form method="post" onsubmit="return confirm('Artikel wirklich löschen? Er wird in allen Lagern entfernt.');">
                                 <input type="hidden" name="warehouse_id" value="<?= (int)$warehouseId ?>">
                                 <input type="hidden" name="item_id" value="<?= (int)$item['id'] ?>">
                                 <input type="hidden" name="action" value="delete_item">
                                 <button class="btn btn-secondary" type="submit">Artikel löschen</button>
                             </form>
+
+                            <?php $distribution = getItemDistribution($pdo, (int)$item['id']); ?>
+                            <div class="muted" style="font-size:12px; margin-top:6px;">
+                                <strong>Bestandsverteilung:</strong>
+                                <?php foreach ($distribution as $dist): ?>
+                                    <div><?= htmlspecialchars($dist['name']) ?>: <?= (int)$dist['current_stock'] ?></div>
+                                <?php endforeach; ?>
+                            </div>
                         </div>
                     </div>
                 </div>
