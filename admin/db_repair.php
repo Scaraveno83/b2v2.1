@@ -22,6 +22,7 @@ $needed = [
     'can_reply_threads',
     'can_moderate_forum',
     'can_assign_ranks',
+    'can_view_statistics',
     'can_manage_warehouses',
     'can_use_warehouses'
 ];
@@ -66,6 +67,7 @@ UPDATE ranks SET
     can_reply_threads = 1,
     can_moderate_forum = 1,
     can_assign_ranks = 1,
+    can_view_statistics = 1,
     can_manage_warehouses = 1,
     can_use_warehouses = 1
 WHERE name = 'Administrator'

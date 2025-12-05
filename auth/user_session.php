@@ -37,6 +37,19 @@ function ensureUserProfileColumns(PDO $pdo): void
     } catch (PDOException $e) {
         $pdo->exec("ALTER TABLE users ADD avatar_path VARCHAR(255) NULL AFTER rank_id");
     }
+
+    foreach ([
+        ['last_login_at', 'DATETIME NULL AFTER avatar_path'],
+        ['last_logout_at', 'DATETIME NULL AFTER last_login_at'],
+        ['last_activity_at', 'DATETIME NULL AFTER last_logout_at'],
+        ['last_activity_path', 'VARCHAR(255) NULL AFTER last_activity_at'],
+    ] as [$column, $definition]) {
+        try {
+            $pdo->query("SELECT {$column} FROM users LIMIT 1");
+        } catch (PDOException $e) {
+            $pdo->exec("ALTER TABLE users ADD {$column} {$definition}");
+        }
+    }
 }
 
 function buildSessionUserData(PDO $pdo, array $user): array
@@ -162,6 +175,7 @@ function refreshSessionUserFromDb(PDO $pdo): void
             r.can_comment_news,
             r.can_react_news,
             r.can_moderate_news,
+            r.can_view_statistics,
             r.can_view_forum,
             r.can_create_threads,
             r.can_reply_threads,

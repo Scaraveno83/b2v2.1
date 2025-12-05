@@ -7,10 +7,16 @@ require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/permissions.php';
 require_once __DIR__ . '/user_session.php';
 require_once __DIR__ . '/../includes/calendar_service.php';
+require_once __DIR__ . '/../includes/activity_log.php';
 
 if (isset($_SESSION['user'])) {
     refreshSessionUserFromDb($pdo);
     applyAbsenceContext($pdo);
+    
+    if (isset($_SESSION['user']['id'])) {
+        $path = $_SERVER['REQUEST_URI'] ?? 'unbekannt';
+        recordPageActivity($pdo, (int)$_SESSION['user']['id'], $path);
+    }
 }
 
 function checkRole($roles) {

@@ -4,6 +4,7 @@ require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../auth/permissions.php';
 require_once __DIR__ . '/../auth/user_session.php';
 require_once __DIR__ . '/../includes/warehouse_service.php';
+require_once __DIR__ . '/../includes/activity_log.php';
 
 $error = "";
 
@@ -69,6 +70,7 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS ranks (
     can_assign_ranks TINYINT(1) NOT NULL DEFAULT 0,
     can_manage_warehouses TINYINT(1) NOT NULL DEFAULT 0,
     can_use_warehouses TINYINT(1) NOT NULL DEFAULT 0,
+    can_view_statistics TINYINT(1) NOT NULL DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
@@ -120,7 +122,8 @@ if ($countRanks === 0) {
          can_moderate_forum,
          can_assign_ranks,
          can_manage_warehouses,
-         can_use_warehouses)
+         can_use_warehouses,
+         can_view_statistics)
         VALUES (
          'Administrator',
          'Voller Zugriff auf alle Funktionen.',
@@ -134,6 +137,8 @@ if ($countRanks === 0) {
          1,
          1,
          1,1,1,1,
+         1,
+         1,
          1,
          1,
          1
@@ -163,7 +168,8 @@ if ($countRanks === 0) {
          can_moderate_forum,
          can_assign_ranks,
          can_manage_warehouses,
-         can_use_warehouses)
+         can_use_warehouses,
+         can_view_statistics)
         VALUES (
          'Mitarbeiter',
          'Standard-Mitarbeiter mit typischen Rechten.',
@@ -180,7 +186,8 @@ if ($countRanks === 0) {
          1,1,1,0,
          0,
          0,
-         1
+         1,
+         0
         )");
 
     // Partner
@@ -207,7 +214,8 @@ if ($countRanks === 0) {
          can_moderate_forum,
          can_assign_ranks,
          can_manage_warehouses,
-         can_use_warehouses)
+         can_use_warehouses,
+         can_view_statistics)
         VALUES (
          'Partner',
          'Externer Partner mit eingeschränktem Zugriff.',
@@ -222,6 +230,7 @@ if ($countRanks === 0) {
          0,
          0,
          1,1,1,0,
+         0,
          0,
          0,
          0
@@ -251,7 +260,8 @@ if ($countRanks === 0) {
          can_moderate_forum,
          can_assign_ranks,
          can_manage_warehouses,
-         can_use_warehouses)
+         can_use_warehouses,
+         can_view_statistics)
         VALUES (
          'Support',
          'Support-Rolle mit Fokus auf Tickets & Moderation.',
@@ -268,7 +278,8 @@ if ($countRanks === 0) {
          1,1,1,1,
          0,
          0,
-         1
+         1,
+         0
         )");
 }
 
@@ -308,18 +319,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             r.can_manage_users,
             r.can_manage_partners,
             r.can_change_settings,
+            r.can_manage_calendar,
             r.can_access_admin,
             r.can_view_dashboard,
             r.can_send_messages,
             r.can_broadcast_messages,
             r.can_moderate_messages,
+            r.can_manage_news,
+            r.can_comment_news,
+            r.can_react_news,
+            r.can_moderate_news,
             r.can_view_forum,
             r.can_create_threads,
             r.can_reply_threads,
             r.can_moderate_forum,
             r.can_assign_ranks,
+            r.can_manage_partner_services,
+            r.can_log_partner_services,
+            r.can_generate_partner_invoices,
             r.can_manage_warehouses,
-            r.can_use_warehouses
+            r.can_use_warehouses,
+            r.can_view_statistics
         FROM users u
         LEFT JOIN ranks r ON u.rank_id = r.id
         WHERE u.username = ?
@@ -330,6 +350,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($user && password_verify($password, $user['password_hash'])) {
         $_SESSION['user'] = buildSessionUserData($pdo, $user);
+
+        recordLoginEvent($pdo, (int)$user['id'], $_SERVER['REQUEST_URI'] ?? '/login/login.php');
 
         header("Location: /index.php");
         exit;

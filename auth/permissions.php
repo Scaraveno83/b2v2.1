@@ -22,6 +22,7 @@ function getAllPermissions() {
         'can_comment_news'            => 'News kommentieren',
         'can_react_news'              => 'News-Reaktionen nutzen',
         'can_moderate_news'           => 'News moderieren',
+        'can_view_statistics'         => 'Statistikbereich einsehen',
         'can_assign_ranks'            => 'Benutzer-Ränge zuweisen',
         'can_manage_partner_services' => 'Partner-Services & Preise verwalten',
         'can_log_partner_services'    => 'Partner-Services erfassen (Woche)',
