@@ -42,6 +42,7 @@ function ensureWarehouseSchema(PDO $pdo): void
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
     ensureFarmableColumn($pdo);
+    ensureItemPriceColumn($pdo);
 
     $pdo->exec("CREATE TABLE IF NOT EXISTS warehouse_item_stocks (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -113,6 +114,16 @@ function ensureFarmableColumn(PDO $pdo): void
     }
 
     $pdo->exec("ALTER TABLE items ADD COLUMN farmable TINYINT(1) NOT NULL DEFAULT 0 AFTER max_stock");
+}
+
+function ensureItemPriceColumn(PDO $pdo): void
+{
+    $stmt = $pdo->query("SHOW COLUMNS FROM items LIKE 'price'");
+    if ($stmt->fetch()) {
+        return;
+    }
+
+    $pdo->exec("ALTER TABLE items ADD COLUMN price DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER farmable");
 }
 
 function migrateLegacyWarehouseItems(PDO $pdo): void
@@ -227,7 +238,7 @@ function getWarehouseRankIds(PDO $pdo, int $warehouseId): array
     return array_map('intval', array_column($stmt->fetchAll(), 'rank_id'));
 }
 
-function createOrUpdateItem(PDO $pdo, string $name, string $description, int $minStock, int $maxStock, bool $farmable): int
+function createOrUpdateItem(PDO $pdo, string $name, string $description, int $minStock, int $maxStock, bool $farmable, float $price): int
 {
     ensureWarehouseSchema($pdo);
 
@@ -236,14 +247,14 @@ function createOrUpdateItem(PDO $pdo, string $name, string $description, int $mi
     $existing = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($existing) {
-        $upd = $pdo->prepare('UPDATE items SET description = ?, min_stock = ?, max_stock = ?, farmable = ? WHERE id = ?');
-        $upd->execute([$description, $minStock, $maxStock, $farmable ? 1 : 0, (int)$existing['id']]);
+        $upd = $pdo->prepare('UPDATE items SET description = ?, min_stock = ?, max_stock = ?, farmable = ?, price = ? WHERE id = ?');
+        $upd->execute([$description, $minStock, $maxStock, $farmable ? 1 : 0, $price, (int)$existing['id']]);
         syncFarmingTasksForItem($pdo, (int)$existing['id']);
         return (int)$existing['id'];
     }
 
-    $ins = $pdo->prepare('INSERT INTO items (name, description, min_stock, max_stock, farmable) VALUES (?,?,?,?,?)');
-    $ins->execute([$name, $description, $minStock, $maxStock, $farmable ? 1 : 0]);
+    $ins = $pdo->prepare('INSERT INTO items (name, description, min_stock, max_stock, farmable, price) VALUES (?,?,?,?,?,?)');
+    $ins->execute([$name, $description, $minStock, $maxStock, $farmable ? 1 : 0, $price]);
     $itemId = (int)$pdo->lastInsertId();
     syncFarmingTasksForItem($pdo, $itemId);
     return $itemId;
@@ -450,13 +461,13 @@ function markFarmingTaskDone(PDO $pdo, int $taskId, ?int $userId, ?array $wareho
  */
 function getWarehouseItems(PDO $pdo, int $warehouseId): array
 {
-    $sql = "SELECT i.id, i.name, i.description, i.min_stock, i.max_stock, i.farmable,
+    $sql = "SELECT i.id, i.name, i.description, i.min_stock, i.max_stock, i.farmable, i.price,
             COALESCE(wis.current_stock, 0) AS current_stock,
             COALESCE(SUM(all_wis.current_stock), 0) AS total_stock
         FROM items i
         LEFT JOIN warehouse_item_stocks wis ON wis.item_id = i.id AND wis.warehouse_id = :warehouseId
         LEFT JOIN warehouse_item_stocks all_wis ON all_wis.item_id = i.id
-        GROUP BY i.id, i.name, i.description, i.min_stock, i.max_stock, i.farmable, wis.current_stock
+        GROUP BY i.id, i.name, i.description, i.min_stock, i.max_stock, i.farmable, i.price, wis.current_stock
         ORDER BY i.name ASC";
     $stmt = $pdo->prepare($sql);
     $stmt->execute(['warehouseId' => $warehouseId]);
