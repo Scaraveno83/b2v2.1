@@ -78,13 +78,19 @@ renderHeader('Farming-Aufgaben', 'staff');
                         <span class="badge">Aufgabe seit: <?= date('d.m.y H:i', strtotime($task['created_at'])) ?></span>
                     </div>
 
-                    <form method="post" style="margin-top:6px;">
-                        <input type="hidden" name="action" value="mark_done">
-                        <input type="hidden" name="task_id" value="<?= (int)$task['id'] ?>">
-                        <button class="btn btn-primary" type="submit" <?= $canComplete ? '' : 'disabled title="Keine Berechtigung für dieses Lager"' ?>>
-                            Als erledigt markieren
-                        </button>
-                    </form>
+                    <?php if ($canComplete): ?>
+                        <form method="post" style="margin-top:6px;">
+                            <input type="hidden" name="action" value="mark_done">
+                            <input type="hidden" name="task_id" value="<?= (int)$task['id'] ?>">
+                            <button class="btn btn-primary" type="submit">
+                                Als erledigt markieren
+                            </button>
+                        </form>
+                    <?php else: ?>
+                        <div class="muted" style="margin-top:6px; font-size:13px;">
+                            Keine Berechtigung für dieses Lager.
+                        </div>
+                    <?php endif; ?>
                 </div>
             <?php endforeach; ?>
         </div>
