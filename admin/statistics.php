@@ -23,6 +23,15 @@ function fetchCount(PDO $pdo, string $sql, array $params = []): int
     return (int)$stmt->fetchColumn();
 }
 
+function percentage(int $value, int $total): int
+{
+    if ($total <= 0) {
+        return 0;
+    }
+
+    return (int)round(($value / $total) * 100);
+}
+
 $userCounts = [
     'total'    => 0,
     'admin'    => 0,
@@ -88,55 +97,336 @@ $partnerLogCount = tableExists($pdo, 'partner_service_logs') ? fetchCount($pdo, 
 
 renderHeader('Systemstatistiken', 'admin');
 ?>
+<style>
+    .stats-hero {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 18px;
+        flex-wrap: wrap;
+    }
+
+    .hero-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 6px;
+    }
+
+    .badge-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: linear-gradient(120deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+        color: var(--text-main);
+        font-weight: 600;
+        letter-spacing: 0.01em;
+    }
+
+    .badge-chip small {
+        color: var(--text-muted);
+        font-weight: 500;
+    }
+
+    .badge-chip .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--accent-cyan);
+        box-shadow: 0 0 10px var(--accent-cyan);
+    }
+
+    .badge-chip.secondary {
+        border-color: rgba(255,255,255,0.08);
+        color: var(--text-muted);
+    }
+
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+    }
+
+    .kpi-card {
+        position: relative;
+        padding: 16px;
+        border-radius: 18px;
+        background: linear-gradient(160deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+        border: 1px solid rgba(255,255,255,0.08);
+        box-shadow: 0 18px 38px rgba(0,0,0,0.35);
+        overflow: hidden;
+    }
+
+    .kpi-card::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at 20% 20%, rgba(0,247,255,0.08), transparent 45%);
+        pointer-events: none;
+    }
+
+    .kpi-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        text-transform: uppercase;
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        color: var(--text-muted);
+        margin-bottom: 8px;
+    }
+
+    .kpi-icon {
+        width: 30px;
+        height: 30px;
+        display: grid;
+        place-items: center;
+        border-radius: 10px;
+        background: rgba(0,0,0,0.28);
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+    }
+
+    .kpi-value {
+        font-size: 30px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        color: #e0f2fe;
+    }
+
+    .kpi-sub {
+        margin-top: 6px;
+        color: var(--text-muted);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 12px;
+        align-items: center;
+    }
+
+    .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.07);
+        border: 1px solid rgba(255,255,255,0.08);
+        color: var(--text-main);
+        font-weight: 600;
+        letter-spacing: 0.01em;
+    }
+
+    .pill.pill-soft {
+        background: rgba(0,247,255,0.08);
+        border-color: rgba(0,247,255,0.25);
+    }
+
+    .pill.pill-magenta {
+        background: rgba(255,0,255,0.08);
+        border-color: rgba(255,0,255,0.2);
+    }
+
+    .pill.pill-gold {
+        background: rgba(250,204,21,0.08);
+        border-color: rgba(250,204,21,0.25);
+        color: #facc15;
+    }
+
+    .section-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 12px;
+        margin-top: 12px;
+    }
+
+    .card h3 {
+        margin-bottom: 4px;
+    }
+
+    .table-compact table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .table-compact th,
+    .table-compact td {
+        padding: 10px;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .table-compact th {
+        text-align: left;
+        font-size: 12px;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+    }
+
+    .table-compact tbody tr:hover {
+        background: rgba(255,255,255,0.02);
+    }
+
+    .timeline-modern {
+        list-style: none;
+        padding-left: 0;
+        display: grid;
+        gap: 10px;
+    }
+
+    .timeline-modern li {
+        padding: 12px 14px;
+        border-radius: 14px;
+        border: 1px solid rgba(255,255,255,0.08);
+        background: linear-gradient(150deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+        position: relative;
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03);
+    }
+
+    .timeline-modern li::before {
+        content: "";
+        position: absolute;
+        left: -6px;
+        top: 16px;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: radial-gradient(circle at 30% 30%, #fff, var(--accent-cyan));
+        box-shadow: 0 0 12px rgba(0,247,255,0.7);
+    }
+
+    .list-split {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 10px 18px;
+        padding-left: 0;
+        list-style: none;
+    }
+
+    .list-split li {
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(255,255,255,0.08);
+        background: rgba(255,255,255,0.03);
+    }
+
+    .progress-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .progress-bar {
+        flex: 1;
+        height: 8px;
+        background: rgba(255,255,255,0.06);
+        border-radius: 999px;
+        overflow: hidden;
+    }
+
+    .progress-bar span {
+        display: block;
+        height: 100%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, rgba(0,247,255,0.8), rgba(255,0,255,0.55));
+    }
+
+    .stat-footer-note {
+        color: var(--text-muted);
+        font-size: 13px;
+        margin-top: 6px;
+    }
+
+    .meta-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--text-muted);
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        width: 100%;
+    }
+
+    .meta-label svg {
+        width: 16px;
+        height: 16px;
+        opacity: 0.8;
+    }
+</style>
 <div class="page-header">
-    <div>
-        <p class="eyebrow">Admin · Monitoring</p>
-        <h1>Systemstatistiken</h1>
-        <p class="muted">Wer ist aktiv? Was passiert wo? Übersichtliche Kennzahlen zu Logins, Seitenaufrufen, Tickets und Lagerbuchungen.</p>
+    <div class="stats-hero">
+        <div>
+            <p class="eyebrow">Admin · Monitoring</p>
+            <h1>Systemstatistiken</h1>
+            <p class="muted">Wer ist aktiv? Was passiert wo? Übersichtliche Kennzahlen zu Logins, Seitenaufrufen, Tickets und Lagerbuchungen.</p>
+            <div class="hero-badges">
+                <span class="badge-chip"><span class="dot"></span> Live-Stand</span>
+                <span class="badge-chip secondary">Aktualisiert · <?= date('d.m.Y H:i') ?></span>
+            </div>
+        </div>
+        <div class="kpi-card" style="min-width:220px;">
+            <div class="kpi-label">
+                <span class="kpi-icon">📈</span>
+                Aktivität jetzt
+            </div>
+            <div class="kpi-value"><?= (int)$activeUsersCount ?></div>
+            <div class="kpi-sub">aktive Nutzer in den letzten 15 Minuten</div>
+        </div>
     </div>
 </div>
 
 <div class="card">
-    <h2>Überblick</h2>
-    <div class="grid grid-3" style="margin-top:12px;">
-        <div class="stat">
-            <div class="stat-label">Benutzer gesamt</div>
-            <div class="stat-value"><?= (int)$userCounts['total'] ?></div>
-            <div class="stat-sub">Admins: <?= (int)$userCounts['admin'] ?> · Mitarbeiter: <?= (int)$userCounts['employee'] ?> · Partner: <?= (int)$userCounts['partner'] ?></div>
+    <div class="card-header-row" style="align-items:center;">
+        <div>
+            <h2>Überblick</h2>
+            <p class="muted">Schnelle Kennzahlen als Taktgeber für System- und Supportaktivitäten.</p>
         </div>
-        <div class="stat">
-            <div class="stat-label">Aktiv (15 Min)</div>
-            <div class="stat-value"><?= (int)$activeUsersCount ?></div>
-            <div class="stat-sub">mit aktuellem Seitenaufruf</div>
+        <div class="pill pill-soft">Gesamtstatus · <?= (int)$ticketTotal ?> Tickets</div>
+    </div>
+    <div class="kpi-grid" style="margin-top:12px;">
+        <div class="kpi-card">
+            <div class="kpi-label"><span class="kpi-icon">👥</span>Benutzer gesamt</div>
+            <div class="kpi-value"><?= (int)$userCounts['total'] ?></div>
+            <div class="kpi-sub">
+                <span class="pill pill-magenta">Admins <?= (int)$userCounts['admin'] ?></span>
+                <span class="pill">Mitarbeiter <?= (int)$userCounts['employee'] ?></span>
+                <span class="pill">Partner <?= (int)$userCounts['partner'] ?></span>
+            </div>
         </div>
-        <div class="stat">
-            <div class="stat-label">Tickets offen</div>
-            <div class="stat-value"><?= (int)$ticketsByStatus['open'] ?></div>
-            <div class="stat-sub">Gesamt: <?= (int)$ticketTotal ?> · In Bearbeitung: <?= (int)$ticketsByStatus['in_progress'] ?></div>
+        <div class="kpi-card">
+            <div class="kpi-label"><span class="kpi-icon">🎫</span>Tickets offen</div>
+            <div class="kpi-value"><?= (int)$ticketsByStatus['open'] ?></div>
+            <div class="kpi-sub">In Bearbeitung: <?= (int)$ticketsByStatus['in_progress'] ?> · Gesamt: <?= (int)$ticketTotal ?></div>
         </div>
-        <div class="stat">
-            <div class="stat-label">Nachrichten</div>
-            <div class="stat-value"><?= (int)$messageCount ?></div>
-            <div class="stat-sub">News: <?= (int)$newsPostsCount ?> Beiträge / <?= (int)$newsCommentCount ?> Kommentare</div>
+        <div class="kpi-card">
+            <div class="kpi-label"><span class="kpi-icon">💬</span>Nachrichten & News</div>
+            <div class="kpi-value"><?= (int)$messageCount ?></div>
+            <div class="kpi-sub">Beiträge: <?= (int)$newsPostsCount ?> · Kommentare: <?= (int)$newsCommentCount ?> · Reaktionen: <?= (int)$newsReactionCount ?></div>
         </div>
-        <div class="stat">
-            <div class="stat-label">Lagerhistorie</div>
-            <div class="stat-value"><?= (int)$warehouseLogCount ?></div>
-            <div class="stat-sub">Lager: <?= (int)$warehouseCount ?></div>
+        <div class="kpi-card">
+            <div class="kpi-label"><span class="kpi-icon">📦</span>Lageraktivität</div>
+            <div class="kpi-value"><?= (int)$warehouseLogCount ?></div>
+            <div class="kpi-sub">Lagerstandorte: <?= (int)$warehouseCount ?></div>
         </div>
-        <div class="stat">
-            <div class="stat-label">Partner-Services</div>
-            <div class="stat-value"><?= (int)$partnerLogCount ?></div>
-            <div class="stat-sub">erfasste Leistungen / Buchungen</div>
+        <div class="kpi-card">
+            <div class="kpi-label"><span class="kpi-icon">🤝</span>Partner-Services</div>
+            <div class="kpi-value"><?= (int)$partnerLogCount ?></div>
+            <div class="kpi-sub">erfasste Leistungen / Buchungen</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label"><span class="kpi-icon">🕑</span>Aktive Nutzer (15 Min)</div>
+            <div class="kpi-value"><?= (int)$activeUsersCount ?></div>
+            <div class="kpi-sub">Letzter Seitenaufruf</div>
         </div>
     </div>
 </div>
 
-<div class="grid grid-2" style="margin-top:12px;">
+<div class="section-grid" style="margin-top:12px;">
     <div class="card">
         <h3>Letzte Logins & Aktivität</h3>
         <p class="muted">Zeitpunkte pro Benutzer, inklusive zuletzt besuchter Seite.</p>
-        <div class="table-responsive">
+        <div class="table-responsive table-compact">
             <table>
                 <thead>
                     <tr>
@@ -152,10 +442,10 @@ renderHeader('Systemstatistiken', 'admin');
                 <?php else: ?>
                     <?php foreach ($recentLogins as $login): ?>
                         <tr>
-                            <td><?= htmlspecialchars($login['username']) ?></td>
+                            <td><span class="pill pill-soft"><?= htmlspecialchars($login['username']) ?></span></td>
                             <td><?= $login['last_login_at'] ? date('d.m.Y H:i', strtotime($login['last_login_at'])) : '—' ?></td>
                             <td><?= $login['last_activity_at'] ? date('d.m.Y H:i', strtotime($login['last_activity_at'])) : '—' ?></td>
-                            <td class="muted" style="max-width:220px;"><?= $login['last_activity_path'] ? htmlspecialchars($login['last_activity_path']) : '—' ?></td>
+                            <td class="muted" style="max-width:220px; word-break:break-all;"><?= $login['last_activity_path'] ? htmlspecialchars($login['last_activity_path']) : '—' ?></td>
                         </tr>
                     <?php endforeach; ?>
                 <?php endif; ?>
@@ -164,20 +454,24 @@ renderHeader('Systemstatistiken', 'admin');
         </div>
     </div>
     <div class="card">
-        <h3>Anmelde-Historie</h3>
-        <p class="muted">Login- und Logout-Ereignisse mit Zeitstempel und IP.</p>
-        <ol class="timeline">
+        <div class="card-header-row" style="align-items:center;">
+            <div>
+                <h3>Anmelde-Historie</h3>
+                <p class="muted">Login- und Logout-Ereignisse mit Zeitstempel und IP.</p>
+            </div>
+            <span class="pill pill-gold">Letzte <?= count($loginHistory) ?> Einträge</span>
+        </div>
+        <ol class="timeline-modern">
             <?php if (!$loginHistory): ?>
                 <li class="muted">Noch keine An- oder Abmeldungen protokolliert.</li>
             <?php else: ?>
                 <?php foreach ($loginHistory as $entry): ?>
                     <li>
-                        <strong><?= htmlspecialchars($entry['action'] === 'login' ? 'Login' : 'Logout') ?></strong>
-                        · <?= $entry['username'] ? htmlspecialchars($entry['username']) : 'Unbekannt' ?>
-                        <span class="muted">(<?= date('d.m.Y H:i', strtotime($entry['created_at'])) ?>)</span>
-                        <?php if (!empty($entry['ip_address'])): ?>
-                            <div class="muted">IP: <?= htmlspecialchars($entry['ip_address']) ?></div>
-                        <?php endif; ?>
+                        <div class="meta-label">
+                            <?= htmlspecialchars($entry['action'] === 'login' ? 'Login' : 'Logout') ?>
+                            · <?= $entry['username'] ? htmlspecialchars($entry['username']) : 'Unbekannt' ?>
+                        </div>
+                        <div class="muted"><?= date('d.m.Y H:i', strtotime($entry['created_at'])) ?><?php if (!empty($entry['ip_address'])): ?> · IP: <?= htmlspecialchars($entry['ip_address']) ?><?php endif; ?></div>
                     </li>
                 <?php endforeach; ?>
             <?php endif; ?>
@@ -185,20 +479,28 @@ renderHeader('Systemstatistiken', 'admin');
     </div>
 </div>
 
-<div class="grid grid-2" style="margin-top:12px;">
+<div class="section-grid" style="margin-top:12px;">
     <div class="card">
-        <h3>Seitenaufrufe & Wege</h3>
-        <p class="muted">Welche Bereiche wurden zuletzt besucht? Was sind die Top-Seiten?</p>
+        <div class="card-header-row" style="align-items:center;">
+            <div>
+                <h3>Seitenaufrufe & Wege</h3>
+                <p class="muted">Welche Bereiche wurden zuletzt besucht? Was sind die Top-Seiten?</p>
+            </div>
+            <span class="pill">Nutzungspfad</span>
+        </div>
         <div class="grid grid-2">
             <div>
                 <h4>Letzte Aufrufe</h4>
-                <ul class="list">
+                <ul class="list-split">
                     <?php if (!$recentPageViews): ?>
                         <li class="muted">Noch keine Seitenaufrufe gespeichert.</li>
                     <?php else: ?>
                         <?php foreach ($recentPageViews as $view): ?>
                             <li>
-                                <div><strong><?= $view['username'] ? htmlspecialchars($view['username']) : 'Unbekannt' ?></strong> · <span class="muted"><?= date('d.m.Y H:i', strtotime($view['created_at'])) ?></span></div>
+                                <div class="meta-label">
+                                    <?= $view['username'] ? htmlspecialchars($view['username']) : 'Unbekannt' ?>
+                                    <span class="pill pill-soft" style="margin-left:auto;"><?= date('d.m. H:i', strtotime($view['created_at'])) ?></span>
+                                </div>
                                 <div class="muted" style="word-break:break-all;"><?= htmlspecialchars($view['context'] ?? '—') ?></div>
                             </li>
                         <?php endforeach; ?>
@@ -207,14 +509,17 @@ renderHeader('Systemstatistiken', 'admin');
             </div>
             <div>
                 <h4>Meistbesuchte Pfade</h4>
-                <ul class="list">
+                <ul class="list-split">
                     <?php if (!$pageViewSummary): ?>
                         <li class="muted">Noch keine Auswertung verfügbar.</li>
                     <?php else: ?>
                         <?php foreach ($pageViewSummary as $pathRow): ?>
                             <li>
-                                <div><strong><?= htmlspecialchars($pathRow['path'] ?? '—') ?></strong></div>
-                                <div class="muted">Aufrufe: <?= (int)$pathRow['hits'] ?> · Zuletzt: <?= $pathRow['last_seen'] ? date('d.m.Y H:i', strtotime($pathRow['last_seen'])) : '—' ?></div>
+                                <div class="meta-label">
+                                    <?= htmlspecialchars($pathRow['path'] ?? '—') ?>
+                                    <span class="pill pill-magenta" style="margin-left:auto;"><?= (int)$pathRow['hits'] ?> Hits</span>
+                                </div>
+                                <div class="muted">Zuletzt: <?= $pathRow['last_seen'] ? date('d.m.Y H:i', strtotime($pathRow['last_seen'])) : '—' ?></div>
                             </li>
                         <?php endforeach; ?>
                     <?php endif; ?>
@@ -223,25 +528,43 @@ renderHeader('Systemstatistiken', 'admin');
         </div>
     </div>
     <div class="card">
-        <h3>Tickets & Kommunikation</h3>
-        <p class="muted">Statusstände aus dem Ticketsystem sowie Nutzung von Nachrichten und News.</p>
+        <div class="card-header-row" style="align-items:center;">
+            <div>
+                <h3>Tickets & Kommunikation</h3>
+                <p class="muted">Statusstände aus dem Ticketsystem sowie Nutzung von Nachrichten und News.</p>
+            </div>
+            <span class="pill">Kommunikationslage</span>
+        </div>
         <div class="grid grid-2">
             <div>
                 <h4>Ticketstatus</h4>
-                <ul class="list">
-                    <li>Offen: <?= (int)$ticketsByStatus['open'] ?></li>
-                    <li>In Bearbeitung: <?= (int)$ticketsByStatus['in_progress'] ?></li>
-                    <li>Wartend: <?= (int)$ticketsByStatus['waiting'] ?></li>
-                    <li>Geschlossen: <?= (int)$ticketsByStatus['closed'] ?></li>
+                <ul class="list" style="list-style:none; padding-left:0;">
+                    <li class="progress-row">
+                        <span class="pill pill-soft">Offen <?= (int)$ticketsByStatus['open'] ?></span>
+                        <div class="progress-bar"><span style="width: <?= percentage((int)$ticketsByStatus['open'], max($ticketTotal, 1)) ?>%;"></span></div>
+                    </li>
+                    <li class="progress-row">
+                        <span class="pill">In Bearbeitung <?= (int)$ticketsByStatus['in_progress'] ?></span>
+                        <div class="progress-bar"><span style="width: <?= percentage((int)$ticketsByStatus['in_progress'], max($ticketTotal, 1)) ?>%;"></span></div>
+                    </li>
+                    <li class="progress-row">
+                        <span class="pill">Wartend <?= (int)$ticketsByStatus['waiting'] ?></span>
+                        <div class="progress-bar"><span style="width: <?= percentage((int)$ticketsByStatus['waiting'], max($ticketTotal, 1)) ?>%;"></span></div>
+                    </li>
+                    <li class="progress-row">
+                        <span class="pill pill-gold">Geschlossen <?= (int)$ticketsByStatus['closed'] ?></span>
+                        <div class="progress-bar"><span style="width: <?= percentage((int)$ticketsByStatus['closed'], max($ticketTotal, 1)) ?>%;"></span></div>
+                    </li>
                 </ul>
+                <div class="stat-footer-note">Gesamt: <?= (int)$ticketTotal ?> Tickets</div>
             </div>
             <div>
                 <h4>News & Nachrichten</h4>
-                <ul class="list">
-                    <li>Nachrichten gesamt: <?= (int)$messageCount ?></li>
-                    <li>News-Beiträge: <?= (int)$newsPostsCount ?></li>
-                    <li>News-Kommentare: <?= (int)$newsCommentCount ?></li>
-                    <li>News-Reaktionen: <?= (int)$newsReactionCount ?></li>
+                <ul class="list-split">
+                    <li class="meta-label">Nachrichten gesamt <span class="pill pill-soft" style="margin-left:auto;"><?= (int)$messageCount ?></span></li>
+                    <li class="meta-label">News-Beiträge <span class="pill" style="margin-left:auto;"><?= (int)$newsPostsCount ?></span></li>
+                    <li class="meta-label">News-Kommentare <span class="pill" style="margin-left:auto;"><?= (int)$newsCommentCount ?></span></li>
+                    <li class="meta-label">News-Reaktionen <span class="pill pill-magenta" style="margin-left:auto;"><?= (int)$newsReactionCount ?></span></li>
                 </ul>
             </div>
         </div>
@@ -249,19 +572,27 @@ renderHeader('Systemstatistiken', 'admin');
 </div>
 
 <div class="card" style="margin-top:12px;">
-    <h3>Lager- & Partnerbuchungen</h3>
-    <p class="muted">Aktivitäten in den Lagern und erfasste Partnerleistungen.</p>
+    <div class="card-header-row" style="align-items:center;">
+        <div>
+            <h3>Lager- & Partnerbuchungen</h3>
+            <p class="muted">Aktivitäten in den Lagern und erfasste Partnerleistungen.</p>
+        </div>
+        <span class="pill pill-soft">Letzte Bewegungen</span>
+    </div>
     <div class="grid grid-2">
         <div>
             <h4>Letzte Lagerbuchungen</h4>
-            <ul class="list">
+            <ul class="list-split">
                 <?php if (!$warehouseHistory): ?>
                     <li class="muted">Keine Lagerbuchungen gefunden.</li>
                 <?php else: ?>
                     <?php foreach ($warehouseHistory as $log): ?>
                         <li>
-                            <div><strong><?= htmlspecialchars($log['warehouse_name'] ?? 'Lager') ?></strong> · <?= htmlspecialchars($log['item_name'] ?? 'Artikel') ?></div>
-                            <div class="muted">Menge: <?= (int)$log['change_amount'] ?> (Bestand: <?= (int)$log['resulting_stock'] ?>) · <?= date('d.m.Y H:i', strtotime($log['created_at'])) ?></div>
+                            <div class="meta-label">
+                                <?= htmlspecialchars($log['warehouse_name'] ?? 'Lager') ?> · <?= htmlspecialchars($log['item_name'] ?? 'Artikel') ?>
+                                <span class="pill pill-soft" style="margin-left:auto;"><?= date('d.m. H:i', strtotime($log['created_at'])) ?></span>
+                            </div>
+                            <div class="muted">Menge: <?= (int)$log['change_amount'] ?> (Bestand: <?= (int)$log['resulting_stock'] ?>)</div>
                             <div class="muted">Aktion: <?= htmlspecialchars($log['action']) ?> · Nutzer: <?= $log['username'] ? htmlspecialchars($log['username']) : 'System' ?></div>
                         </li>
                     <?php endforeach; ?>
