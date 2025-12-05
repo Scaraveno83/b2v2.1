@@ -10,14 +10,20 @@ requireAbsenceAccess('warehouses');
 requirePermission('can_use_warehouses');
 ensureWarehouseSchema($pdo);
 
+
 $user = $_SESSION['user'];
 $message = '';
+
+$warehouses = getAccessibleWarehouses($pdo, $user);
+$warehouseIds = array_column($warehouses, 'id');
+$hasManageOverride = !empty($user['permissions']['can_manage_warehouses']);
+$scopeWarehouseIds = $hasManageOverride ? null : $warehouseIds;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     if ($action === 'mark_done') {
         $taskId = (int)($_POST['task_id'] ?? 0);
-        if (markFarmingTaskDone($pdo, $taskId, $user['id'] ?? null, null)) {
+        if (markFarmingTaskDone($pdo, $taskId, $user['id'] ?? null, $scopeWarehouseIds)) {
             $message = 'Aufgabe wurde als erledigt markiert.';
         } else {
             $message = 'Aufgabe konnte nicht aktualisiert werden.';
@@ -26,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 syncAllFarmingTasks($pdo);
-$tasks = getOpenFarmingTasks($pdo, null);
+$tasks = getOpenFarmingTasks($pdo);
 
 renderHeader('Farming-Aufgaben', 'staff');
 ?>
@@ -43,6 +49,11 @@ renderHeader('Farming-Aufgaben', 'staff');
     <?php else: ?>
         <div class="item-grid" style="display:grid; gap:12px; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));">
             <?php foreach ($tasks as $task): ?>
+                <?php
+                    $canComplete = $hasManageOverride
+                        || $task['warehouse_id'] === null
+                        || in_array((int)$task['warehouse_id'], $warehouseIds, true);
+                ?>
                 <div class="item-card" style="border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:12px; background:rgba(76,175,80,0.05);">
                     <header style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:8px;">
                         <div>
@@ -70,7 +81,9 @@ renderHeader('Farming-Aufgaben', 'staff');
                     <form method="post" style="margin-top:6px;">
                         <input type="hidden" name="action" value="mark_done">
                         <input type="hidden" name="task_id" value="<?= (int)$task['id'] ?>">
-                        <button class="btn btn-primary" type="submit">Als erledigt markieren</button>
+                        <button class="btn btn-primary" type="submit" <?= $canComplete ? '' : 'disabled title="Keine Berechtigung für dieses Lager"' ?>>
+                            Als erledigt markieren
+                        </button>
                     </form>
                 </div>
             <?php endforeach; ?>
