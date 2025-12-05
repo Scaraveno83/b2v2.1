@@ -12,10 +12,16 @@ function ensureRankPermissionColumns(PDO $pdo): void
     }
     $checked = true;
 
+    $dbNameStmt = $pdo->query('SELECT DATABASE()');
+    $database = $dbNameStmt->fetchColumn();
+
+    $columnExistsStmt = $pdo->prepare('SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = ? AND table_name = ? AND column_name = ?');
+
     foreach (array_keys(getAllPermissions()) as $permColumn) {
-        try {
-            $pdo->query("SELECT {$permColumn} FROM ranks LIMIT 1");
-        } catch (PDOException $e) {
+        $columnExistsStmt->execute([$database, 'ranks', $permColumn]);
+        $exists = (bool)$columnExistsStmt->fetchColumn();
+
+        if (!$exists) {
             $pdo->exec("ALTER TABLE ranks ADD {$permColumn} TINYINT(1) NOT NULL DEFAULT 0");
         }
     }
@@ -32,9 +38,13 @@ function ensureUserProfileColumns(PDO $pdo): void
     }
     $checked = true;
 
-    try {
-        $pdo->query("SELECT avatar_path FROM users LIMIT 1");
-    } catch (PDOException $e) {
+    $dbNameStmt = $pdo->query('SELECT DATABASE()');
+    $database = $dbNameStmt->fetchColumn();
+
+    $columnExistsStmt = $pdo->prepare('SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = ? AND table_name = ? AND column_name = ?');
+
+    $columnExistsStmt->execute([$database, 'users', 'avatar_path']);
+    if (!$columnExistsStmt->fetchColumn()) {
         $pdo->exec("ALTER TABLE users ADD avatar_path VARCHAR(255) NULL AFTER rank_id");
     }
 
@@ -44,9 +54,8 @@ function ensureUserProfileColumns(PDO $pdo): void
         ['last_activity_at', 'DATETIME NULL AFTER last_logout_at'],
         ['last_activity_path', 'VARCHAR(255) NULL AFTER last_activity_at'],
     ] as [$column, $definition]) {
-        try {
-            $pdo->query("SELECT {$column} FROM users LIMIT 1");
-        } catch (PDOException $e) {
+        $columnExistsStmt->execute([$database, 'users', $column]);
+        if (!$columnExistsStmt->fetchColumn()) {
             $pdo->exec("ALTER TABLE users ADD {$column} {$definition}");
         }
     }
