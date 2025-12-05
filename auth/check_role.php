@@ -10,7 +10,15 @@ require_once __DIR__ . '/../includes/calendar_service.php';
 require_once __DIR__ . '/../includes/activity_log.php';
 
 if (isset($_SESSION['user'])) {
-    refreshSessionUserFromDb($pdo);
+   // Ensure the helper is available even if the include path failed earlier
+    if (!function_exists('refreshSessionUserFromDb')) {
+        require_once __DIR__ . '/user_session.php';
+    }
+
+    if (function_exists('refreshSessionUserFromDb')) {
+        refreshSessionUserFromDb($pdo);
+    }
+
     applyAbsenceContext($pdo);
     
     if (isset($_SESSION['user']['id'])) {
