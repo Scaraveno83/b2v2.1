@@ -10,7 +10,7 @@ ensureWarehouseSchema($pdo);
 
 $processableItems = getProcessableItems($pdo);
 $processableIds = array_map(static fn($row) => (int)$row['id'], $processableItems);
-$currentItemId = (int)($_GET['item_id'] ?? $_POST['item_id'] ?? ($processableIds[0] ?? 0));
+$currentItemId = (int)($_GET['item_id'] ?? $_POST['item_id'] ?? 0);
 $message = '';
 
 function findItemById(array $items, int $id): ?array {
@@ -26,6 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     if (!in_array($currentItemId, $processableIds, true)) {
         $message = 'Bitte zuerst einen Artikel auswählen, der für die Weiterverarbeitung freigegeben ist.';
+        $currentItemId = 0;
     } else {
         if ($action === 'set_output') {
             $output = max(1, (int)($_POST['output_quantity'] ?? 1));
@@ -60,8 +61,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $processableItems = getProcessableItems($pdo);
     $processableIds = array_map(static fn($row) => (int)$row['id'], $processableItems);
     if (!in_array($currentItemId, $processableIds, true)) {
-        $currentItemId = $processableIds[0] ?? 0;
+        $currentItemId = 0;
     }
+}
+
+if ($currentItemId && !in_array($currentItemId, $processableIds, true)) {
+    $currentItemId = 0;
 }
 
 $currentItem = $currentItemId ? findItemById($processableItems, $currentItemId) : null;
@@ -71,29 +76,32 @@ $allItems = getAllItems($pdo);
 renderHeader('Weiterverarbeitungsmodul', 'admin');
 ?>
 <div class="card">
-    <h2>Weiterverarbeitungsmodul</h2>
-    <p class="muted">Markiere Artikel als weiterverarbeitbar und lege fest, welche Zutaten pro Durchlauf benötigt werden.</p>
+   <h2>Weiterverarbeitungsmodul</h2>␊
+    <p class="muted">Lege zunächst herstellbare Artikel in der Artikelverwaltung fest und hinterlege hier die passenden Rezepte.</p>
 
     <?php if ($message): ?>
         <div class="notice"><?= htmlspecialchars($message) ?></div>
     <?php endif; ?>
 
     <?php if (!$processableItems): ?>
-        <div class="error">Noch keine Artikel für die Weiterverarbeitung freigegeben. Setze die Option in der Artikelverwaltung.</div>
+        <div class="error">Noch keine herstellbaren Artikel freigegeben. Aktiviere die Option "Artikel ist herstellbar" in der Artikelverwaltung.</div>
         <div class="toolbar" style="margin-top:10px;">
             <a class="btn" href="/admin/warehouses.php">Zur Lagerverwaltung</a>
+            <a class="btn" href="/admin/warehouse_items.php">Artikel verwalten</a>
         </div>
     <?php else: ?>
         <form method="get" class="grid grid-2" style="gap:12px; align-items:end; margin-bottom:12px;">
             <div class="field-group">
-                <label for="item_id">Artikel auswählen</label>
-                <select id="item_id" name="item_id" onchange="this.form.submit()">
+                <label for="item_id">Artikel zum Herstellen auswählen</label>
+                <select id="item_id" name="item_id" onchange="this.form.submit()" required>
+                    <option value="" disabled <?= $currentItemId === 0 ? 'selected' : '' ?>>Artikel wählen</option>
                     <?php foreach ($processableItems as $item): ?>
                         <option value="<?= (int)$item['id'] ?>" <?= $currentItemId === (int)$item['id'] ? 'selected' : '' ?>>
                             <?= htmlspecialchars($item['name']) ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
+                <small class="muted">Freigabe für die Herstellung erfolgt in der Artikelverwaltung (Checkbox "herstellbar").</small>
             </div>
             <div>
                 <button class="btn" type="submit">Ansicht laden</button>
@@ -198,7 +206,9 @@ renderHeader('Weiterverarbeitungsmodul', 'admin');
                         <div class="muted">Keine Zutaten hinterlegt.</div>
                     <?php endif; ?>
                 </div>
-            <?php endif; ?>
+        <?php endif; ?>
+        <?php else: ?>
+            <div class="notice">Wähle einen herzustellenden Artikel aus, um das Rezept zu pflegen.</div>
         <?php endif; ?>
     <?php endif; ?>
 

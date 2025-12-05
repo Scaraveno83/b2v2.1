@@ -154,9 +154,9 @@ renderHeader('Lagerartikel', 'admin');
         <div class="field-group" style="display:flex; flex-direction:column; justify-content:center; gap:4px;">
             <label class="checkbox">
                 <input type="checkbox" name="processable" value="1">
-                <span>Weiterverarbeitung benötigt</span>
+                <span>Artikel ist herstellbar (Rezept benötigt)</span>
             </label>
-            <small class="muted">Aktiviere diese Option, wenn für den Artikel eine Weiterverarbeitungsrezeptur gepflegt wird.</small>
+            <small class="muted">Markiere hier alle Artikel, die du über das Weiterverarbeitungsmodul herstellen möchtest.</small>
         </div>
         <div class="field-group">
             <label for="current_stock">Startbestand</label>
@@ -219,7 +219,7 @@ renderHeader('Lagerartikel', 'admin');
                                 <div class="badge" style="background:rgba(76,175,80,0.15); color:#b2ffb2;">Farmbar</div>
                             <?php endif; ?>
                             <?php if (!empty($item['processable'])): ?>
-                                <div class="badge" style="background:rgba(255,193,7,0.15); color:#ffe082;">Weiterverarbeitung</div>
+                                <div class="badge" style="background:rgba(255,193,7,0.15); color:#ffe082;">Herstellbar</div>
                             <?php endif; ?>
                             <?php if ($item['total_stock'] < $item['min_stock']): ?>
                                 <div class="error" style="margin-top:6px;">Unter Mindestbestand (gesamt)!</div>
@@ -268,7 +268,7 @@ renderHeader('Lagerartikel', 'admin');
                                 </label>
                                 <label class="checkbox" style="margin:4px 0;">
                                     <input type="checkbox" name="processable" value="1" <?= !empty($item['processable']) ? 'checked' : '' ?>>
-                                    <span>Weiterverarbeitung benötigt</span>
+                                    <span>Artikel ist herstellbar (Rezept benötigt)</span>
                                 </label>
                                 <button class="btn" type="submit">Details speichern</button>
                             </form>
