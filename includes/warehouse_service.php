@@ -37,12 +37,16 @@ function ensureWarehouseSchema(PDO $pdo): void
         min_stock INT NOT NULL DEFAULT 0,
         max_stock INT NOT NULL DEFAULT 0,
         farmable TINYINT(1) NOT NULL DEFAULT 0,
+        price DECIMAL(10,2) NOT NULL DEFAULT 0,
+        processable TINYINT(1) NOT NULL DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
     ensureFarmableColumn($pdo);
     ensureItemPriceColumn($pdo);
+    ensureProcessableColumn($pdo);
+    ensureProcessingTables($pdo);
 
     $pdo->exec("CREATE TABLE IF NOT EXISTS warehouse_item_stocks (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -124,6 +128,39 @@ function ensureItemPriceColumn(PDO $pdo): void
     }
 
     $pdo->exec("ALTER TABLE items ADD COLUMN price DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER farmable");
+}
+
+function ensureProcessableColumn(PDO $pdo): void
+{
+    $stmt = $pdo->query("SHOW COLUMNS FROM items LIKE 'processable'");
+    if ($stmt->fetch()) {
+        return;
+    }
+
+    $pdo->exec("ALTER TABLE items ADD COLUMN processable TINYINT(1) NOT NULL DEFAULT 0 AFTER price");
+}
+
+function ensureProcessingTables(PDO $pdo): void
+{
+    $pdo->exec("CREATE TABLE IF NOT EXISTS processing_recipes (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        item_id INT NOT NULL UNIQUE,
+        output_quantity INT NOT NULL DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        CONSTRAINT fk_pr_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS processing_recipe_ingredients (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        recipe_id INT NOT NULL,
+        ingredient_item_id INT NOT NULL,
+        quantity INT NOT NULL DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uniq_recipe_ingredient (recipe_id, ingredient_item_id),
+        CONSTRAINT fk_pri_recipe FOREIGN KEY (recipe_id) REFERENCES processing_recipes(id) ON DELETE CASCADE,
+        CONSTRAINT fk_pri_item FOREIGN KEY (ingredient_item_id) REFERENCES items(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 }
 
 function migrateLegacyWarehouseItems(PDO $pdo): void
@@ -238,7 +275,7 @@ function getWarehouseRankIds(PDO $pdo, int $warehouseId): array
     return array_map('intval', array_column($stmt->fetchAll(), 'rank_id'));
 }
 
-function createOrUpdateItem(PDO $pdo, string $name, string $description, int $minStock, int $maxStock, bool $farmable, float $price): int
+function createOrUpdateItem(PDO $pdo, string $name, string $description, int $minStock, int $maxStock, bool $farmable, float $price, bool $processable): int
 {
     ensureWarehouseSchema($pdo);
 
@@ -247,14 +284,14 @@ function createOrUpdateItem(PDO $pdo, string $name, string $description, int $mi
     $existing = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($existing) {
-        $upd = $pdo->prepare('UPDATE items SET description = ?, min_stock = ?, max_stock = ?, farmable = ?, price = ? WHERE id = ?');
-        $upd->execute([$description, $minStock, $maxStock, $farmable ? 1 : 0, $price, (int)$existing['id']]);
+        $upd = $pdo->prepare('UPDATE items SET description = ?, min_stock = ?, max_stock = ?, farmable = ?, price = ?, processable = ? WHERE id = ?');
+        $upd->execute([$description, $minStock, $maxStock, $farmable ? 1 : 0, $price, $processable ? 1 : 0, (int)$existing['id']]);
         syncFarmingTasksForItem($pdo, (int)$existing['id']);
         return (int)$existing['id'];
     }
 
-    $ins = $pdo->prepare('INSERT INTO items (name, description, min_stock, max_stock, farmable, price) VALUES (?,?,?,?,?,?)');
-    $ins->execute([$name, $description, $minStock, $maxStock, $farmable ? 1 : 0, $price]);
+    $ins = $pdo->prepare('INSERT INTO items (name, description, min_stock, max_stock, farmable, price, processable) VALUES (?,?,?,?,?,?,?)');
+    $ins->execute([$name, $description, $minStock, $maxStock, $farmable ? 1 : 0, $price, $processable ? 1 : 0]);
     $itemId = (int)$pdo->lastInsertId();
     syncFarmingTasksForItem($pdo, $itemId);
     return $itemId;
@@ -461,13 +498,13 @@ function markFarmingTaskDone(PDO $pdo, int $taskId, ?int $userId, ?array $wareho
  */
 function getWarehouseItems(PDO $pdo, int $warehouseId): array
 {
-    $sql = "SELECT i.id, i.name, i.description, i.min_stock, i.max_stock, i.farmable, i.price,
+    $sql = "SELECT i.id, i.name, i.description, i.min_stock, i.max_stock, i.farmable, i.price, i.processable,
             COALESCE(wis.current_stock, 0) AS current_stock,
             COALESCE(SUM(all_wis.current_stock), 0) AS total_stock
         FROM items i
         LEFT JOIN warehouse_item_stocks wis ON wis.item_id = i.id AND wis.warehouse_id = :warehouseId
         LEFT JOIN warehouse_item_stocks all_wis ON all_wis.item_id = i.id
-        GROUP BY i.id, i.name, i.description, i.min_stock, i.max_stock, i.farmable, i.price, wis.current_stock
+        GROUP BY i.id, i.name, i.description, i.min_stock, i.max_stock, i.farmable, i.price, i.processable, wis.current_stock
         ORDER BY i.name ASC";
     $stmt = $pdo->prepare($sql);
     $stmt->execute(['warehouseId' => $warehouseId]);
@@ -505,4 +542,116 @@ function getWarehouseLogEntries(PDO $pdo, ?int $warehouseId = null, int $limit =
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     return $stmt->fetchAll();
+}
+
+function getAllItems(PDO $pdo): array
+{
+    $stmt = $pdo->query('SELECT id, name, description FROM items ORDER BY name ASC');
+    return $stmt->fetchAll();
+}
+
+function getProcessableItems(PDO $pdo): array
+{
+    ensureWarehouseSchema($pdo);
+    $stmt = $pdo->query('SELECT id, name, description FROM items WHERE processable = 1 ORDER BY name ASC');
+    return $stmt->fetchAll();
+}
+
+function ensureProcessingRecipe(PDO $pdo, int $itemId): int
+{
+    ensureWarehouseSchema($pdo);
+
+    $stmt = $pdo->prepare('SELECT id FROM processing_recipes WHERE item_id = ?');
+    $stmt->execute([$itemId]);
+    $existingId = $stmt->fetchColumn();
+    if ($existingId) {
+        return (int)$existingId;
+    }
+
+    $insert = $pdo->prepare('INSERT INTO processing_recipes (item_id, output_quantity) VALUES (?, 1)');
+    $insert->execute([$itemId]);
+    return (int)$pdo->lastInsertId();
+}
+
+function setProcessingOutputQuantity(PDO $pdo, int $itemId, int $outputQuantity): void
+{
+    $recipeId = ensureProcessingRecipe($pdo, $itemId);
+    $quantity = max(1, $outputQuantity);
+    $stmt = $pdo->prepare('UPDATE processing_recipes SET output_quantity = ? WHERE id = ?');
+    $stmt->execute([$quantity, $recipeId]);
+}
+
+function upsertProcessingIngredient(PDO $pdo, int $recipeId, int $ingredientItemId, int $quantity): void
+{
+    $stmt = $pdo->prepare('INSERT INTO processing_recipe_ingredients (recipe_id, ingredient_item_id, quantity)
+        VALUES (?,?,?) ON DUPLICATE KEY UPDATE quantity = VALUES(quantity)');
+    $stmt->execute([$recipeId, $ingredientItemId, max(1, $quantity)]);
+}
+
+function deleteProcessingIngredient(PDO $pdo, int $recipeId, int $ingredientItemId): void
+{
+    $stmt = $pdo->prepare('DELETE FROM processing_recipe_ingredients WHERE recipe_id = ? AND ingredient_item_id = ?');
+    $stmt->execute([$recipeId, $ingredientItemId]);
+}
+
+function getProcessingRecipeDetails(PDO $pdo, int $itemId): ?array
+{
+    ensureWarehouseSchema($pdo);
+    $stmt = $pdo->prepare('SELECT id, output_quantity FROM processing_recipes WHERE item_id = ?');
+    $stmt->execute([$itemId]);
+    $recipe = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$recipe) {
+        return null;
+    }
+
+    $ingStmt = $pdo->prepare('SELECT pri.ingredient_item_id, pri.quantity, i.name AS ingredient_name
+        FROM processing_recipe_ingredients pri
+        INNER JOIN items i ON i.id = pri.ingredient_item_id
+        WHERE pri.recipe_id = ?
+        ORDER BY i.name ASC');
+    $ingStmt->execute([(int)$recipe['id']]);
+    $ingredients = [];
+    foreach ($ingStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $ingredients[] = [
+            'ingredient_item_id' => (int)$row['ingredient_item_id'],
+            'quantity' => (int)$row['quantity'],
+            'ingredient_name' => $row['ingredient_name'],
+        ];
+    }
+
+    return [
+        'id' => (int)$recipe['id'],
+        'output_quantity' => max(1, (int)$recipe['output_quantity']),
+        'ingredients' => $ingredients,
+    ];
+}
+
+function calculateProcessingNeeds(PDO $pdo, int $itemId, int $targetQuantity): ?array
+{
+    $recipe = getProcessingRecipeDetails($pdo, $itemId);
+    if (!$recipe) {
+        return null;
+    }
+
+    $outputPerBatch = max(1, (int)$recipe['output_quantity']);
+    $batches = (int)max(1, ceil($targetQuantity / $outputPerBatch));
+
+    $ingredients = [];
+    foreach ($recipe['ingredients'] as $ingredient) {
+        $totalNeeded = (int)$ingredient['quantity'] * $batches;
+        $available = getTotalStockForItem($pdo, (int)$ingredient['ingredient_item_id']);
+        $ingredients[] = [
+            'item_id' => (int)$ingredient['ingredient_item_id'],
+            'name' => $ingredient['ingredient_name'],
+            'per_batch' => (int)$ingredient['quantity'],
+            'total_needed' => $totalNeeded,
+            'available_stock' => $available,
+        ];
+    }
+
+    return [
+        'output_per_batch' => $outputPerBatch,
+        'batches' => $batches,
+        'ingredients' => $ingredients,
+    ];
 }

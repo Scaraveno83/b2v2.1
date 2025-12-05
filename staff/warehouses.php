@@ -108,6 +108,7 @@ renderHeader('Lager', 'warehouses');
             <p class="muted">Mindest- und Höchstbestände gelten global über alle Lager; die Warnhinweise beziehen den Gesamtbestand ein.</p>
             <div class="toolbar" style="margin:8px 0;">
                 <a class="btn" href="/staff/farming.php">Farming-Aufgaben anzeigen</a>
+                <a class="btn" href="/staff/processing.php">Weiterverarbeitung planen</a>
             </div>
 
             <?php if ($items): ?>

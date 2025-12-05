@@ -33,6 +33,11 @@ renderHeader('Mitarbeiterbereich', 'staff');
     <p class="muted">Sieh dir automatisch generierte Farming-Aufgaben an, wenn farmbare Artikel unter den Mindestbestand fallen.</p>
     <a class="btn btn-primary" href="/staff/farming.php">Farming-Aufgaben öffnen</a>
 </div>
+<div class="card">
+    <div class="card-header">Weiterverarbeitung</div>
+    <p class="muted">Berechne den Materialbedarf für Aufträge, z.&nbsp;B. für Repair Kits.</p>
+    <a class="btn btn-primary" href="/staff/processing.php">Weiterverarbeitung planen</a>
+</div>
 <?php endif; ?>
 <?php if (hasPermission('can_log_partner_services')): ?>
 <div class="card">

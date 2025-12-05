@@ -31,11 +31,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stock = (int)($_POST['current_stock'] ?? 0);
         $farmable = isset($_POST['farmable']) && $_POST['farmable'] === '1';
         $price = max(0, (float)($_POST['price'] ?? 0));
+        $processable = isset($_POST['processable']) && $_POST['processable'] === '1';
 
         if ($name === '') {
             $message = 'Artikelname darf nicht leer sein.';
         } else {
-            $itemId = createOrUpdateItem($pdo, $name, $description, $min, $max, $farmable, $price);
+            $itemId = createOrUpdateItem($pdo, $name, $description, $min, $max, $farmable, $price, $processable);
             ensureWarehouseItemLink($pdo, $warehouseId, $itemId);
             $note = 'Erstanlage';
             if ($stock !== 0) {
@@ -57,12 +58,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $max = (int)($_POST['max_stock'] ?? 0);
         $farmable = isset($_POST['farmable']) && $_POST['farmable'] === '1';
         $price = max(0, (float)($_POST['price'] ?? 0));
+        $processable = isset($_POST['processable']) && $_POST['processable'] === '1';
 
         if ($name === '') {
             $message = 'Artikelname darf nicht leer sein.';
         } else {
-            $stmt = $pdo->prepare('UPDATE items SET name = ?, description = ?, min_stock = ?, max_stock = ?, farmable = ?, price = ? WHERE id = ?');
-            $stmt->execute([$name, $description, $min, $max, $farmable ? 1 : 0, $price, $itemId]);
+            $stmt = $pdo->prepare('UPDATE items SET name = ?, description = ?, min_stock = ?, max_stock = ?, farmable = ?, price = ?, processable = ? WHERE id = ?');
+            $stmt->execute([$name, $description, $min, $max, $farmable ? 1 : 0, $price, $processable ? 1 : 0, $itemId]);
             syncFarmingTasksForItem($pdo, $itemId);
             $message = 'Artikel aktualisiert (global).';
         }
@@ -149,6 +151,13 @@ renderHeader('Lagerartikel', 'admin');
             </label>
             <small class="muted">Nur farmbare Artikel erzeugen Farming-Aufgaben, wenn der Mindestbestand unterschritten wird.</small>
         </div>
+        <div class="field-group" style="display:flex; flex-direction:column; justify-content:center; gap:4px;">
+            <label class="checkbox">
+                <input type="checkbox" name="processable" value="1">
+                <span>Weiterverarbeitung benötigt</span>
+            </label>
+            <small class="muted">Aktiviere diese Option, wenn für den Artikel eine Weiterverarbeitungsrezeptur gepflegt wird.</small>
+        </div>
         <div class="field-group">
             <label for="current_stock">Startbestand</label>
             <input id="current_stock" name="current_stock" type="number" min="0" value="0">
@@ -209,6 +218,9 @@ renderHeader('Lagerartikel', 'admin');
                             <?php if ($item['farmable']): ?>
                                 <div class="badge" style="background:rgba(76,175,80,0.15); color:#b2ffb2;">Farmbar</div>
                             <?php endif; ?>
+                            <?php if (!empty($item['processable'])): ?>
+                                <div class="badge" style="background:rgba(255,193,7,0.15); color:#ffe082;">Weiterverarbeitung</div>
+                            <?php endif; ?>
                             <?php if ($item['total_stock'] < $item['min_stock']): ?>
                                 <div class="error" style="margin-top:6px;">Unter Mindestbestand (gesamt)!</div>
                             <?php elseif ($item['max_stock'] > 0 && $item['total_stock'] > $item['max_stock']): ?>
@@ -253,6 +265,10 @@ renderHeader('Lagerartikel', 'admin');
                                 <label class="checkbox" style="margin:4px 0;">
                                     <input type="checkbox" name="farmable" value="1" <?= $item['farmable'] ? 'checked' : '' ?>>
                                     <span>Artikel ist farmbar</span>
+                                </label>
+                                <label class="checkbox" style="margin:4px 0;">
+                                    <input type="checkbox" name="processable" value="1" <?= !empty($item['processable']) ? 'checked' : '' ?>>
+                                    <span>Weiterverarbeitung benötigt</span>
                                 </label>
                                 <button class="btn" type="submit">Details speichern</button>
                             </form>

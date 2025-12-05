@@ -87,6 +87,7 @@ renderHeader('Admin Dashboard', 'admin');
         <?php endif; ?>
         <?php if (hasPermission('can_manage_warehouses')): ?>
             <a class="btn btn-secondary" href="/admin/warehouses.php">Lagerverwaltung</a>
+            <a class="btn btn-secondary" href="/admin/processing_recipes.php">Weiterverarbeitungsmodul</a>
         <?php endif; ?>
         <?php if (hasPermission('can_manage_calendar')): ?>
             <a class="btn btn-secondary" href="/admin/calendar.php">Kalender &amp; Abmeldungen</a>
