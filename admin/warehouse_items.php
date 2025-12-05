@@ -30,11 +30,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $max = (int)($_POST['max_stock'] ?? 0);
         $stock = (int)($_POST['current_stock'] ?? 0);
         $farmable = isset($_POST['farmable']) && $_POST['farmable'] === '1';
+        $price = max(0, (float)($_POST['price'] ?? 0));
 
         if ($name === '') {
             $message = 'Artikelname darf nicht leer sein.';
         } else {
-            $itemId = createOrUpdateItem($pdo, $name, $description, $min, $max, $farmable);
+            $itemId = createOrUpdateItem($pdo, $name, $description, $min, $max, $farmable, $price);
             ensureWarehouseItemLink($pdo, $warehouseId, $itemId);
             $note = 'Erstanlage';
             if ($stock !== 0) {
@@ -55,12 +56,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $min = (int)($_POST['min_stock'] ?? 0);
         $max = (int)($_POST['max_stock'] ?? 0);
         $farmable = isset($_POST['farmable']) && $_POST['farmable'] === '1';
+        $price = max(0, (float)($_POST['price'] ?? 0));
 
         if ($name === '') {
             $message = 'Artikelname darf nicht leer sein.';
         } else {
-            $stmt = $pdo->prepare('UPDATE items SET name = ?, description = ?, min_stock = ?, max_stock = ?, farmable = ? WHERE id = ?');
-            $stmt->execute([$name, $description, $min, $max, $farmable ? 1 : 0, $itemId]);
+            $stmt = $pdo->prepare('UPDATE items SET name = ?, description = ?, min_stock = ?, max_stock = ?, farmable = ?, price = ? WHERE id = ?');
+            $stmt->execute([$name, $description, $min, $max, $farmable ? 1 : 0, $price, $itemId]);
             syncFarmingTasksForItem($pdo, $itemId);
             $message = 'Artikel aktualisiert (global).';
         }
@@ -127,6 +129,10 @@ renderHeader('Lagerartikel', 'admin');
         <div class="field-group">
             <label for="description">Beschreibung</label>
             <input id="description" name="description">
+        </div>
+        <div class="field-group">
+            <label for="price">Stückpreis (€)</label>
+            <input id="price" name="price" type="number" min="0" step="0.01" value="0">
         </div>
         <div class="field-group">
             <label for="min_stock">Mindestbestand</label>
@@ -199,6 +205,7 @@ renderHeader('Lagerartikel', 'admin');
                             <div><strong><?= (int)$item['total_stock'] ?></strong> Stück gesamt</div>
                             <div class="badge">Min <?= (int)$item['min_stock'] ?></div>
                             <div class="badge">Max <?= (int)$item['max_stock'] ?></div>
+                            <div class="badge">Preis <?= number_format((float)($item['price'] ?? 0), 2, ',', '.') ?> €</div>
                             <?php if ($item['farmable']): ?>
                                 <div class="badge" style="background:rgba(76,175,80,0.15); color:#b2ffb2;">Farmbar</div>
                             <?php endif; ?>
@@ -240,6 +247,8 @@ renderHeader('Lagerartikel', 'admin');
                                     <input type="number" name="min_stock" min="0" value="<?= (int)$item['min_stock'] ?>" title="Mindestbestand">
                                     <input type="number" name="max_stock" min="0" value="<?= (int)$item['max_stock'] ?>" title="Höchstbestand">
                                 </div>
+                                <label for="price_<?= (int)$item['id'] ?>">Stückpreis (€)</label>
+                                <input id="price_<?= (int)$item['id'] ?>" type="number" name="price" min="0" step="0.01" value="<?= htmlspecialchars(number_format((float)($item['price'] ?? 0), 2, '.', '')) ?>" title="Stückpreis in Euro">
                                 <input type="text" name="description" value="<?= htmlspecialchars($item['description'] ?? '') ?>" placeholder="Beschreibung">
                                 <label class="checkbox" style="margin:4px 0;">
                                     <input type="checkbox" name="farmable" value="1" <?= $item['farmable'] ? 'checked' : '' ?>>
