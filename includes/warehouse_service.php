@@ -372,7 +372,7 @@ function adjustWarehouseStock(PDO $pdo, int $warehouseId, int $itemId, int $delt
     logWarehouseChange($pdo, $warehouseId, $itemId, $userId, $actualChange, $action, $note, $newStock);
 
     syncFarmingTasksForItem($pdo, $itemId);
-    syncProcessingTasksForItem($pdo, $itemId)
+    syncProcessingTasksForItem($pdo, $itemId);
 
     return true;
 }
@@ -639,7 +639,18 @@ function markProcessingTaskDone(PDO $pdo, int $taskId, ?int $userId, ?array $war
     }
 
     if ($warehouseIds !== null && $task['warehouse_id'] !== null && !in_array((int)$task['warehouse_id'], $warehouseIds, true)) {
-        return false;
+        $itemStmt = $pdo->prepare('SELECT min_stock FROM items WHERE id = ?');
+        $itemStmt->execute([(int)$task['item_id']]);
+        $minStock = (int)$itemStmt->fetchColumn();
+
+        if ($minStock <= 0) {
+            return false;
+        }
+
+        $totalStock = getTotalStockForItem($pdo, (int)$task['item_id']);
+        if ($totalStock < $minStock) {
+            return false;
+        }
     }
 
     $update = $pdo->prepare("UPDATE processing_tasks SET status = 'done', done_by = ?, completed_at = NOW() WHERE id = ? AND status = 'open'");
