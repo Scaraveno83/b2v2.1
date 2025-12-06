@@ -2419,26 +2419,27 @@ body.split-mode-open {
     top: 120px;
     width: 240px;
     z-index: 15;
-    transform: rotate(-1.2deg);
     transform-origin: center;
-    transition: transform .4s ease;
+    transition: transform .5s ease, filter .5s ease;
     filter: drop-shadow(0 14px 40px rgba(0,0,0,0.25));
 }
 
 .banner-beacon:hover {
-    transform: rotate(0deg) scale(1.02);
+    transform: scale(1.02);
+    filter: drop-shadow(0 16px 46px rgba(0,0,0,0.3));
 }
 
 .banner-beacon__glow {
     position: absolute;
     inset: -18px;
-    background: radial-gradient(circle at 30% 20%, rgba(0,255,255,0.16), transparent 60%),
-                radial-gradient(circle at 80% 30%, rgba(255,0,180,0.14), transparent 62%),
-                linear-gradient(120deg, rgba(0,255,255,0.16), rgba(255,0,180,0.2));
+    background: radial-gradient(circle at 30% 20%, rgba(0,255,255,0.2), transparent 60%),
+                radial-gradient(circle at 80% 30%, rgba(255,0,180,0.2), transparent 62%),
+                linear-gradient(120deg, rgba(0,255,255,0.16), rgba(255,0,180,0.22));
     filter: blur(18px);
-    opacity: 0.85;
+    opacity: 0.9;
     border-radius: 24px;
     pointer-events: none;
+    animation: beaconGlow 12s ease-in-out infinite;
 }
 
 .banner-beacon__badge {
@@ -2459,11 +2460,12 @@ body.split-mode-open {
     position: relative;
     overflow: hidden;
     border-radius: 18px;
-    background: linear-gradient(165deg, rgba(9,13,38,0.9), rgba(9,13,38,0.7));
+    background: linear-gradient(165deg, rgba(9,13,38,0.92), rgba(9,13,38,0.72));
     border: 1px solid rgba(255,255,255,0.12);
     padding: 18px 18px 16px;
     min-height: 170px;
-    backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px) saturate(120%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), inset 0 -1px 0 rgba(0,0,0,0.3);
 }
 
 .banner-beacon__item {
@@ -2475,12 +2477,14 @@ body.split-mode-open {
     flex-direction: column;
     align-items: center;
     gap: 10px;
-    background: linear-gradient(140deg, rgba(11,17,54,0.8), rgba(16,24,70,0.65));
+    background: linear-gradient(140deg, rgba(11,17,54,0.82), rgba(16,24,70,0.68));
     border-radius: 14px;
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
     border: 1px solid rgba(255,255,255,0.08);
+    transform: translateY(12px) scale(0.98);
+    transition: opacity .75s ease, transform .75s ease, filter .75s ease;
 }
 
 .banner-beacon__item img {
@@ -2488,6 +2492,7 @@ body.split-mode-open {
     max-height: 120px;
     object-fit: contain;
     filter: drop-shadow(0 6px 14px rgba(0,0,0,0.35));
+    animation: beaconFloat 9s ease-in-out infinite;
 }
 
 .banner-beacon__item figcaption {
@@ -2503,6 +2508,7 @@ body.split-mode-open {
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
+    transform: translateY(0) scale(1);
 }
 
 .banner-beacon__item.is-entering,
@@ -2511,54 +2517,24 @@ body.split-mode-open {
     visibility: visible;
 }
 
-.banner-beacon__item.animate-slide.is-entering { animation: beaconSlideIn .55s ease; }
-.banner-beacon__item.animate-slide.is-leaving { animation: beaconSlideOut .42s ease forwards; }
-.banner-beacon__item.animate-tilt.is-entering { animation: beaconTiltIn .6s cubic-bezier(.2,.9,.35,1); }
-.banner-beacon__item.animate-tilt.is-leaving { animation: beaconTiltOut .4s ease forwards; }
-.banner-beacon__item.animate-zoom.is-entering { animation: beaconZoomIn .5s ease; }
-.banner-beacon__item.animate-zoom.is-leaving { animation: beaconZoomOut .42s ease forwards; }
-.banner-beacon__item.animate-blur.is-entering { animation: beaconBlurIn .55s ease; }
-.banner-beacon__item.animate-blur.is-leaving { animation: beaconBlurOut .45s ease forwards; }
-
-@keyframes beaconSlideIn {
-    from { transform: translateX(60%) rotate(-3deg) scale(0.9); opacity: 0; }
-    to { transform: translateX(0) rotate(0deg) scale(1); opacity: 1; }
+.banner-beacon__item.is-entering {
+    filter: drop-shadow(0 12px 32px rgba(6,214,160,0.2));
 }
 
-@keyframes beaconSlideOut {
-    from { transform: translateX(0) scale(1); opacity: 1; }
-    to { transform: translateX(-30%) scale(0.9); opacity: 0; }
+.banner-beacon__item.is-leaving {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.97);
+    filter: blur(2px);
 }
 
-@keyframes beaconTiltIn {
-    from { transform: rotate(6deg) translateY(24px); opacity: 0; }
-    60% { transform: rotate(-2deg) translateY(-6px); opacity: 1; }
-    to { transform: rotate(0deg) translateY(0); opacity: 1; }
+@keyframes beaconGlow {
+    0%, 100% { opacity: 0.9; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(1.03); }
 }
 
-@keyframes beaconTiltOut {
-    from { transform: rotate(0deg) translateY(0); opacity: 1; }
-    to { transform: rotate(-6deg) translateY(-20px); opacity: 0; }
-}
-
-@keyframes beaconZoomIn {
-    from { transform: scale(0.8) translateY(16px); opacity: 0; filter: blur(6px); }
-    to { transform: scale(1) translateY(0); opacity: 1; filter: blur(0); }
-}
-
-@keyframes beaconZoomOut {
-    from { transform: scale(1) translateY(0); opacity: 1; }
-    to { transform: scale(0.86) translateY(-12px); opacity: 0; }
-}
-
-@keyframes beaconBlurIn {
-    from { transform: translateY(-12px); opacity: 0; filter: blur(10px); }
-    to { transform: translateY(0); opacity: 1; filter: blur(0); }
-}
-
-@keyframes beaconBlurOut {
-    from { transform: translateY(0); opacity: 1; filter: blur(0); }
-    to { transform: translateY(20px); opacity: 0; filter: blur(8px); }
+@keyframes beaconFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
 }
 
 @media (max-width: 960px) {
