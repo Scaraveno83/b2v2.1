@@ -161,6 +161,23 @@ function ensureProcessingTables(PDO $pdo): void
         CONSTRAINT fk_pri_recipe FOREIGN KEY (recipe_id) REFERENCES processing_recipes(id) ON DELETE CASCADE,
         CONSTRAINT fk_pri_item FOREIGN KEY (ingredient_item_id) REFERENCES items(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS processing_tasks (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        item_id INT NOT NULL,
+        warehouse_id INT NULL,
+        required_amount INT NOT NULL DEFAULT 0,
+        batches INT NOT NULL DEFAULT 1,
+        status ENUM('open','done','cancelled') NOT NULL DEFAULT 'open',
+        note TEXT NULL,
+        done_by INT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        completed_at DATETIME NULL,
+        CONSTRAINT fk_pt_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE,
+        CONSTRAINT fk_pt_warehouse FOREIGN KEY (warehouse_id) REFERENCES warehouses(id) ON DELETE SET NULL,
+        CONSTRAINT fk_pt_user FOREIGN KEY (done_by) REFERENCES users(id) ON DELETE SET NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 }
 
 function migrateLegacyWarehouseItems(PDO $pdo): void
@@ -287,6 +304,7 @@ function createOrUpdateItem(PDO $pdo, string $name, string $description, int $mi
         $upd = $pdo->prepare('UPDATE items SET description = ?, min_stock = ?, max_stock = ?, farmable = ?, price = ?, processable = ? WHERE id = ?');
         $upd->execute([$description, $minStock, $maxStock, $farmable ? 1 : 0, $price, $processable ? 1 : 0, (int)$existing['id']]);
         syncFarmingTasksForItem($pdo, (int)$existing['id']);
+        syncProcessingTasksForItem($pdo, (int)$existing['id']);
         return (int)$existing['id'];
     }
 
@@ -294,6 +312,7 @@ function createOrUpdateItem(PDO $pdo, string $name, string $description, int $mi
     $ins->execute([$name, $description, $minStock, $maxStock, $farmable ? 1 : 0, $price, $processable ? 1 : 0]);
     $itemId = (int)$pdo->lastInsertId();
     syncFarmingTasksForItem($pdo, $itemId);
+    syncProcessingTasksForItem($pdo, $itemId);
     return $itemId;
 }
 
@@ -353,6 +372,7 @@ function adjustWarehouseStock(PDO $pdo, int $warehouseId, int $itemId, int $delt
     logWarehouseChange($pdo, $warehouseId, $itemId, $userId, $actualChange, $action, $note, $newStock);
 
     syncFarmingTasksForItem($pdo, $itemId);
+    syncProcessingTasksForItem($pdo, $itemId)
 
     return true;
 }
@@ -489,6 +509,143 @@ function markFarmingTaskDone(PDO $pdo, int $taskId, ?int $userId, ?array $wareho
     $update->execute([$userId, $taskId]);
 
     syncFarmingTasksForItem($pdo, (int)$task['item_id']);
+
+    return $update->rowCount() > 0;
+}
+
+function syncProcessingTasksForItem(PDO $pdo, int $itemId): void
+{
+    ensureWarehouseSchema($pdo);
+
+    $stmt = $pdo->prepare('SELECT id, min_stock, processable FROM items WHERE id = ?');
+    $stmt->execute([$itemId]);
+    $item = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$item) {
+        return;
+    }
+
+    $minStock = (int)$item['min_stock'];
+    $isProcessable = (int)$item['processable'] === 1;
+    $totalStock = getTotalStockForItem($pdo, $itemId);
+
+    if (!$isProcessable || $minStock <= 0) {
+        $status = $isProcessable ? 'done' : 'cancelled';
+        $closeStmt = $pdo->prepare("UPDATE processing_tasks SET status = ?, completed_at = NOW() WHERE item_id = ? AND status = 'open'");
+        $closeStmt->execute([$status, $itemId]);
+        return;
+    }
+
+    $requiredAmount = max(0, $minStock - $totalStock);
+
+    if ($requiredAmount <= 0) {
+        $doneStmt = $pdo->prepare("UPDATE processing_tasks SET status = 'done', completed_at = NOW() WHERE item_id = ? AND status = 'open'");
+        $doneStmt->execute([$itemId]);
+        return;
+    }
+
+    $plan = calculateProcessingNeeds($pdo, $itemId, $requiredAmount);
+    if (!$plan) {
+        $cancelStmt = $pdo->prepare("UPDATE processing_tasks SET status = 'cancelled', completed_at = NOW() WHERE item_id = ? AND status = 'open'");
+        $cancelStmt->execute([$itemId]);
+        return;
+    }
+
+    $warehouseStmt = $pdo->prepare('SELECT warehouse_id FROM warehouse_item_stocks WHERE item_id = ? ORDER BY current_stock ASC LIMIT 1');
+    $warehouseStmt->execute([$itemId]);
+    $targetWarehouseId = $warehouseStmt->fetchColumn();
+    $targetWarehouseId = $targetWarehouseId !== false ? (int)$targetWarehouseId : null;
+
+    $missingIngredients = [];
+    foreach ($plan['ingredients'] as $ingredient) {
+        $missingAmount = (int)$ingredient['total_needed'] - (int)$ingredient['available_stock'];
+        if ($missingAmount > 0) {
+            $missingIngredients[] = sprintf('%s (%d fehlen)', $ingredient['name'], $missingAmount);
+        }
+    }
+
+    $noteParts = [
+        sprintf('Fehlbestand %d Stück (Min: %d, Bestand: %d).', $requiredAmount, $minStock, $totalStock),
+        sprintf('%d Durchläufe à %d Output.', (int)$plan['batches'], (int)$plan['output_per_batch']),
+    ];
+
+    if ($missingIngredients) {
+        $noteParts[] = 'Zutaten fehlen: ' . implode(', ', $missingIngredients);
+    }
+
+    $note = implode(' ', $noteParts);
+
+    $openStmt = $pdo->prepare("SELECT id FROM processing_tasks WHERE item_id = ? AND status = 'open' LIMIT 1");
+    $openStmt->execute([$itemId]);
+    $openTask = $openStmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($openTask) {
+        $upd = $pdo->prepare('UPDATE processing_tasks SET required_amount = ?, batches = ?, warehouse_id = ?, note = ?, updated_at = NOW() WHERE id = ?');
+        $upd->execute([$requiredAmount, (int)$plan['batches'], $targetWarehouseId, $note, (int)$openTask['id']]);
+    } else {
+        $ins = $pdo->prepare('INSERT INTO processing_tasks (item_id, warehouse_id, required_amount, batches, note) VALUES (?,?,?,?,?)');
+        $ins->execute([$itemId, $targetWarehouseId, $requiredAmount, (int)$plan['batches'], $note]);
+    }
+}
+
+function syncAllProcessingTasks(PDO $pdo): void
+{
+    ensureWarehouseSchema($pdo);
+    $stmt = $pdo->query('SELECT id FROM items');
+    foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $itemId) {
+        syncProcessingTasksForItem($pdo, (int)$itemId);
+    }
+}
+
+function getOpenProcessingTasks(PDO $pdo, ?array $warehouseIds = null): array
+{
+    ensureWarehouseSchema($pdo);
+
+    $sql = "SELECT pt.*, i.name AS item_name, i.min_stock, i.max_stock, i.processable, COALESCE(SUM(wis.current_stock), 0) AS total_stock, w.name AS warehouse_name
+        FROM processing_tasks pt
+        INNER JOIN items i ON pt.item_id = i.id
+        LEFT JOIN warehouse_item_stocks wis ON wis.item_id = i.id
+        LEFT JOIN warehouses w ON pt.warehouse_id = w.id
+        WHERE pt.status = 'open'";
+
+    $params = [];
+    if ($warehouseIds !== null) {
+        if ($warehouseIds === []) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($warehouseIds), '?'));
+        $sql .= " AND (pt.warehouse_id IS NULL OR pt.warehouse_id IN ($placeholders))";
+        foreach ($warehouseIds as $wid) {
+            $params[] = (int)$wid;
+        }
+    }
+
+    $sql .= " GROUP BY pt.id, i.id, w.id ORDER BY pt.created_at ASC";
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    return $stmt->fetchAll();
+}
+
+function markProcessingTaskDone(PDO $pdo, int $taskId, ?int $userId, ?array $warehouseIds = null): bool
+{
+    ensureWarehouseSchema($pdo);
+
+    $stmt = $pdo->prepare('SELECT id, item_id, warehouse_id, status FROM processing_tasks WHERE id = ?');
+    $stmt->execute([$taskId]);
+    $task = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$task || $task['status'] !== 'open') {
+        return false;
+    }
+
+    if ($warehouseIds !== null && $task['warehouse_id'] !== null && !in_array((int)$task['warehouse_id'], $warehouseIds, true)) {
+        return false;
+    }
+
+    $update = $pdo->prepare("UPDATE processing_tasks SET status = 'done', done_by = ?, completed_at = NOW() WHERE id = ? AND status = 'open'");
+    $update->execute([$userId, $taskId]);
+
+    syncProcessingTasksForItem($pdo, (int)$task['item_id']);
 
     return $update->rowCount() > 0;
 }
