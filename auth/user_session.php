@@ -174,7 +174,6 @@ function refreshSessionUserFromDb(PDO $pdo): void
             r.can_manage_users,
             r.can_manage_partners,
             r.can_change_settings,
-            r.can_manage_banners,
             r.can_manage_calendar,
             r.can_access_admin,
             r.can_view_dashboard,

@@ -85,9 +85,6 @@ renderHeader('Admin Dashboard', 'admin');
         <?php if (hasPermission('can_manage_partner_services')): ?>
             <a class="btn btn-secondary" href="/admin/partner_services.php">Services & Preise</a>
         <?php endif; ?>
-        <?php if (hasPermission('can_manage_banners')): ?>
-            <a class="btn btn-secondary" href="/admin/banners.php">Startseiten-Banner</a>
-        <?php endif; ?>
         <?php if (hasPermission('can_generate_partner_invoices')): ?>
             <a class="btn btn-secondary" href="/admin/partner_billing.php">Partner-Abrechnung</a>
         <?php endif; ?>

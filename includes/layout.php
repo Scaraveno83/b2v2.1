@@ -24,7 +24,6 @@ function renderHeader($title, $currentPage) {
         <script src="/assets/notifications.js" defer></script>
         <script src="/assets/news.js" defer></script>
         <script src="/assets/split.js" defer></script>
-        <script src="/assets/banner-rotator.js" defer></script>
     </head>
     <body data-user-role="<?= isset($_SESSION['user']['role']) ? htmlspecialchars($_SESSION['user']['role']) : 'guest' ?>"
           data-user-id="<?= isset($_SESSION['user']['id']) ? (int)$_SESSION['user']['id'] : 'anon' ?>"
