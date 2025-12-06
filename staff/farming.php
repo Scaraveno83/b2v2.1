@@ -3,6 +3,7 @@ require_once __DIR__ . '/../auth/check_role.php';
 require_once __DIR__ . '/../includes/layout.php';
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../includes/warehouse_service.php';
+require_once __DIR__ . '/../includes/module_settings.php';
 
 checkRole(['employee', 'admin']);
 requireAbsenceAccess('staff');
@@ -11,6 +12,20 @@ requirePermission('can_use_warehouses');
 ensureWarehouseSchema($pdo);
 
 $user = $_SESSION['user'];
+$moduleSettings = getModuleSettings($pdo);
+
+if (empty($moduleSettings['farming_tasks_enabled'])) {
+    http_response_code(404);
+    renderHeader('Farming-Aufgaben', 'staff');
+    ?>
+    <div class="card">
+        <h2>Farming-Aufgaben deaktiviert</h2>
+        <p class="muted">Dieses Modul wurde im Adminbereich deaktiviert.</p>
+    </div>
+    <?php
+    renderFooter();
+    exit;
+}
 
 syncAllFarmingTasks($pdo);
 $tasks = getOpenFarmingTasks($pdo);

@@ -3,6 +3,7 @@ require_once __DIR__ . '/../auth/check_role.php';
 require_once __DIR__ . '/../includes/layout.php';
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../includes/warehouse_service.php';
+require_once __DIR__ . '/../includes/module_settings.php';
 
 checkRole(['employee', 'admin']);
 requireAbsenceAccess('staff');
@@ -12,6 +13,20 @@ ensureWarehouseSchema($pdo);
 
 $user = $_SESSION['user'];
 $warehouses = getAccessibleWarehouses($pdo, $user);
+$moduleSettings = getModuleSettings($pdo);
+
+if (empty($moduleSettings['processing_tasks_enabled'])) {
+    http_response_code(404);
+    renderHeader('Herstellungs-Aufgaben', 'staff');
+    ?>
+    <div class="card">
+        <h2>Herstellungs-Aufgaben deaktiviert</h2>
+        <p class="muted">Dieses Modul wurde im Adminbereich deaktiviert.</p>
+    </div>
+    <?php
+    renderFooter();
+    exit;
+}
 
 syncAllProcessingTasks($pdo);
 $tasks = getOpenProcessingTasks($pdo);

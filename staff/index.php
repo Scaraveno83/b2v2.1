@@ -1,8 +1,13 @@
 <?php
 require_once __DIR__ . '/../auth/check_role.php';
 require_once __DIR__ . '/../includes/layout.php';
+require_once __DIR__ . '/../includes/module_settings.php';
 checkRole(['employee','admin']);
 requireAbsenceAccess('staff');
+
+$moduleSettings = getModuleSettings($pdo);
+$farmingEnabled = !empty($moduleSettings['farming_tasks_enabled']);
+$processingTasksEnabled = !empty($moduleSettings['processing_tasks_enabled']);
 
 renderHeader('Mitarbeiterbereich', 'staff');
 ?>
@@ -28,16 +33,20 @@ renderHeader('Mitarbeiterbereich', 'staff');
     <p class="muted">Greife auf dein zugewiesenes Lager zu, um Bestände zu prüfen und Artikel zu verbuchen.</p>
     <a class="btn btn-primary" href="/staff/warehouses.php">Zum Lagersystem</a>
 </div>
-<div class="card">
-    <div class="card-header">Farming-Aufgaben</div>
-    <p class="muted">Sieh dir automatisch generierte Farming-Aufgaben an, wenn farmbare Artikel unter den Mindestbestand fallen.</p>
-    <a class="btn btn-primary" href="/staff/farming.php">Farming-Aufgaben öffnen</a>
-</div>
-<div class="card">
-    <div class="card-header">Herstellungs-Aufgaben</div>
-    <p class="muted">Automatisch generierte Aufträge, wenn herstellbare Artikel unter den Mindestbestand fallen.</p>
-    <a class="btn btn-primary" href="/staff/processing_tasks.php">Herstellungs-Aufgaben öffnen</a>
-</div>
+<?php if ($farmingEnabled): ?>
+    <div class="card">
+        <div class="card-header">Farming-Aufgaben</div>
+        <p class="muted">Sieh dir automatisch generierte Farming-Aufgaben an, wenn farmbare Artikel unter den Mindestbestand fallen.</p>
+        <a class="btn btn-primary" href="/staff/farming.php">Farming-Aufgaben öffnen</a>
+    </div>
+<?php endif; ?>
+<?php if ($processingTasksEnabled): ?>
+    <div class="card">
+        <div class="card-header">Herstellungs-Aufgaben</div>
+        <p class="muted">Automatisch generierte Aufträge, wenn herstellbare Artikel unter den Mindestbestand fallen.</p>
+        <a class="btn btn-primary" href="/staff/processing_tasks.php">Herstellungs-Aufgaben öffnen</a>
+    </div>
+<?php endif; ?>
 <div class="card">
     <div class="card-header">Weiterverarbeitung</div>
     <p class="muted">Berechne den Materialbedarf für Aufträge, z.&nbsp;B. für Repair Kits.</p>

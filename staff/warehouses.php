@@ -3,6 +3,7 @@ require_once __DIR__ . '/../auth/check_role.php';
 require_once __DIR__ . '/../includes/layout.php';
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../includes/warehouse_service.php';
+require_once __DIR__ . '/../includes/module_settings.php';
 
 checkRole(['employee', 'admin', 'partner']);
 requirePermission('can_use_warehouses');
@@ -14,6 +15,9 @@ ensureWarehouseSchema($pdo);
 
 $user = $_SESSION['user'];
 $warehouses = getAccessibleWarehouses($pdo, $user);
+$moduleSettings = getModuleSettings($pdo);
+$farmingEnabled = !empty($moduleSettings['farming_tasks_enabled']);
+$processingTasksEnabled = !empty($moduleSettings['processing_tasks_enabled']);
 
 $currentWarehouseId = isset($_GET['warehouse_id']) ? (int)$_GET['warehouse_id'] : null;
 if ($currentWarehouseId === null && $warehouses) {
@@ -107,7 +111,14 @@ renderHeader('Lager', 'warehouses');
             <p class="muted"><?= htmlspecialchars($currentWarehouse['description'] ?? '') ?></p>
             <p class="muted">Mindest- und Höchstbestände gelten global über alle Lager; die Warnhinweise beziehen den Gesamtbestand ein.</p>
             <div class="toolbar" style="margin:8px 0;">
-                <a class="btn" href="/staff/farming.php">Farming-Aufgaben anzeigen</a>
+                <?php if (in_array($user['role'], ['employee', 'admin'], true)): ?>
+                    <?php if ($farmingEnabled): ?>
+                        <a class="btn" href="/staff/farming.php">Farming-Aufgaben anzeigen</a>
+                    <?php endif; ?>
+                    <?php if ($processingTasksEnabled): ?>
+                        <a class="btn" href="/staff/processing_tasks.php">Herstellungs-Aufgaben anzeigen</a>
+                    <?php endif; ?>
+                <?php endif; ?>
                 <a class="btn" href="/staff/processing.php">Weiterverarbeitung planen</a>
             </div>
 
