@@ -381,9 +381,6 @@ renderHeader('Login', 'login');
         <button class="btn btn-primary" type="submit">Einloggen</button>
         <a class="btn btn-secondary" href="/index.php">Abbrechen</a>
     </form>
-    <p class="muted" style="margin-top:10px;">
-        Initialer Admin (falls noch nicht vorhanden): Benutzername <strong>scaraveno</strong>, Passwort <strong>15118329112006</strong>
-    </p>
 </div>
 <?php
 renderFooter();
