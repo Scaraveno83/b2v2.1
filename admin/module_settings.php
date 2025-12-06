@@ -13,6 +13,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $settings = saveModuleSettings($pdo, [
         'farming_tasks_enabled'    => isset($_POST['farming_tasks_enabled']) ? 1 : 0,
         'processing_tasks_enabled' => isset($_POST['processing_tasks_enabled']) ? 1 : 0,
+        'processing_planner_enabled'=> isset($_POST['processing_planner_enabled']) ? 1 : 0,
+        'partner_services_enabled'  => isset($_POST['partner_services_enabled']) ? 1 : 0,
     ]);
     $message = 'Einstellungen gespeichert.';
 }
@@ -41,6 +43,22 @@ renderHeader('Moduleinstellungen', 'admin');
             <div>
                 <div><strong>Herstellungs-Aufgaben</strong></div>
                 <div class="muted">Erstellt Aufträge für herstellbare Artikel, sobald der Mindestbestand unterschritten wird.</div>
+            </div>
+        </label>
+
+        <label class="checkbox">
+            <input type="checkbox" name="processing_planner_enabled" value="1" <?= !empty($settings['processing_planner_enabled']) ? 'checked' : '' ?>>
+            <div>
+                <div><strong>Weiterverarbeitung planen</strong></div>
+                <div class="muted">Materialbedarf kalkulieren und Zutaten direkt aus Lagern ausbuchen.</div>
+            </div>
+        </label>
+
+        <label class="checkbox">
+            <input type="checkbox" name="partner_services_enabled" value="1" <?= !empty($settings['partner_services_enabled']) ? 'checked' : '' ?>>
+            <div>
+                <div><strong>Partner-Services erfassen</strong></div>
+                <div class="muted">Erfassung von Leistungen für Partner mit Wochenabrechnung aktivieren oder ausblenden.</div>
             </div>
         </label>
 
