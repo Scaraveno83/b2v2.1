@@ -34,6 +34,11 @@ renderHeader('Mitarbeiterbereich', 'staff');
     <a class="btn btn-primary" href="/staff/farming.php">Farming-Aufgaben öffnen</a>
 </div>
 <div class="card">
+    <div class="card-header">Herstellungs-Aufgaben</div>
+    <p class="muted">Automatisch generierte Aufträge, wenn herstellbare Artikel unter den Mindestbestand fallen.</p>
+    <a class="btn btn-primary" href="/staff/processing_tasks.php">Herstellungs-Aufgaben öffnen</a>
+</div>
+<div class="card">
     <div class="card-header">Weiterverarbeitung</div>
     <p class="muted">Berechne den Materialbedarf für Aufträge, z.&nbsp;B. für Repair Kits.</p>
     <a class="btn btn-primary" href="/staff/processing.php">Weiterverarbeitung planen</a>
