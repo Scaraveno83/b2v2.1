@@ -28,8 +28,10 @@ function ensureModuleSettingsTable(PDO $pdo): void
 function getDefaultModuleSettings(): array
 {
     return [
-        'farming_tasks_enabled'     => true,
-        'processing_tasks_enabled'  => true,
+        'farming_tasks_enabled'      => true,
+        'processing_tasks_enabled'   => true,
+        'processing_planner_enabled' => true,
+        'partner_services_enabled'   => true,
     ];
 }
 
