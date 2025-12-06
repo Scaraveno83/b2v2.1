@@ -8,6 +8,8 @@ requireAbsenceAccess('staff');
 $moduleSettings = getModuleSettings($pdo);
 $farmingEnabled = !empty($moduleSettings['farming_tasks_enabled']);
 $processingTasksEnabled = !empty($moduleSettings['processing_tasks_enabled']);
+$processingPlannerEnabled = !empty($moduleSettings['processing_planner_enabled']);
+$partnerServicesEnabled = !empty($moduleSettings['partner_services_enabled']);
 
 renderHeader('Mitarbeiterbereich', 'staff');
 ?>
@@ -47,13 +49,15 @@ renderHeader('Mitarbeiterbereich', 'staff');
         <a class="btn btn-primary" href="/staff/processing_tasks.php">Herstellungs-Aufgaben öffnen</a>
     </div>
 <?php endif; ?>
-<div class="card">
-    <div class="card-header">Weiterverarbeitung</div>
-    <p class="muted">Berechne den Materialbedarf für Aufträge, z.&nbsp;B. für Repair Kits.</p>
-    <a class="btn btn-primary" href="/staff/processing.php">Weiterverarbeitung planen</a>
-</div>
+<?php if ($processingPlannerEnabled): ?>
+    <div class="card">
+        <div class="card-header">Weiterverarbeitung</div>
+        <p class="muted">Berechne den Materialbedarf für Aufträge, z.&nbsp;B. für Repair Kits.</p>
+        <a class="btn btn-primary" href="/staff/processing.php">Weiterverarbeitung planen</a>
+    </div>
 <?php endif; ?>
-<?php if (hasPermission('can_log_partner_services')): ?>
+<?php endif; ?>
+<?php if (hasPermission('can_log_partner_services') && $partnerServicesEnabled): ?>
 <div class="card">
     <div class="card-header">Partner-Services</div>
     <p class="muted">Leistungen für Partner mit Wochenabrechnung erfassen.</p>

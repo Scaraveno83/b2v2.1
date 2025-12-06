@@ -18,6 +18,7 @@ $warehouses = getAccessibleWarehouses($pdo, $user);
 $moduleSettings = getModuleSettings($pdo);
 $farmingEnabled = !empty($moduleSettings['farming_tasks_enabled']);
 $processingTasksEnabled = !empty($moduleSettings['processing_tasks_enabled']);
+$processingPlannerEnabled = !empty($moduleSettings['processing_planner_enabled']);
 
 $currentWarehouseId = isset($_GET['warehouse_id']) ? (int)$_GET['warehouse_id'] : null;
 if ($currentWarehouseId === null && $warehouses) {
@@ -119,7 +120,9 @@ renderHeader('Lager', 'warehouses');
                         <a class="btn" href="/staff/processing_tasks.php">Herstellungs-Aufgaben anzeigen</a>
                     <?php endif; ?>
                 <?php endif; ?>
-                <a class="btn" href="/staff/processing.php">Weiterverarbeitung planen</a>
+                <?php if ($processingPlannerEnabled): ?>
+                    <a class="btn" href="/staff/processing.php">Weiterverarbeitung planen</a>
+                <?php endif; ?>
             </div>
 
             <?php if ($items): ?>

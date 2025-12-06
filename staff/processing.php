@@ -3,12 +3,27 @@ require_once __DIR__ . '/../auth/check_role.php';
 require_once __DIR__ . '/../includes/layout.php';
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../includes/warehouse_service.php';
+require_once __DIR__ . '/../includes/module_settings.php';
 
 checkRole(['employee', 'admin', 'partner']);
 requirePermission('can_use_warehouses');
 requireAbsenceAccess('staff');
 requireAbsenceAccess('warehouses');
 ensureWarehouseSchema($pdo);
+
+$moduleSettings = getModuleSettings($pdo);
+if (empty($moduleSettings['processing_planner_enabled'])) {
+    http_response_code(404);
+    renderHeader('Weiterverarbeitung planen', 'warehouses');
+    ?>
+    <div class="card">
+        <h2>Weiterverarbeitung deaktiviert</h2>
+        <p class="muted">Dieses Modul wurde im Adminbereich deaktiviert.</p>
+    </div>
+    <?php
+    renderFooter();
+    exit;
+}
 
 $user = $_SESSION['user'] ?? [];
 $warehouses = getAccessibleWarehouses($pdo, $user);
