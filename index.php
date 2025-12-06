@@ -20,6 +20,9 @@ renderHeader('Startseite', 'start');
                     <figcaption><?= htmlspecialchars($banner['title'] ?? 'Partner-Banner') ?></figcaption>
                 </figure>
             <?php endforeach; ?>
+            <div class="banner-beacon__progress" aria-hidden="true">
+                <div class="banner-beacon__progress-bar" data-banner-progress></div>
+            </div>
         </div>
     </aside>
 <?php endif; ?>
