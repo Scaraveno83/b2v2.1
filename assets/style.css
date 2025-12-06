@@ -2348,12 +2348,32 @@ body.light .split-close {
     padding: 10px 12px;
     border-radius: 12px;
     border: 1px solid rgba(148,163,184,0.6);
-    background: rgba(255,255,255,0.06);
+    background: linear-gradient(160deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
     color: var(--text-main);
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.12),
+        0 10px 28px rgba(0,0,0,0.4);
+    transition: border-color 0.15s ease, box-shadow 0.18s ease, background-color 0.18s ease;
 }
 
 body.light .split-control select {
-    background: white;
+    background: #f8fafc;
+    color: var(--text-main-light);
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.9),
+        0 10px 24px rgba(15,23,42,0.14);
+}
+
+.split-control select option {
+    background: #0b1024;
+    color: var(--text-main);
+}
+
+body.light .split-control select option {
+    background: #ffffff;
     color: var(--text-main-light);
 }
 
@@ -2390,4 +2410,172 @@ body.light .split-frame {
 
 body.split-mode-open {
     overflow: hidden;
+    }
+
+/* --- Banner Beacon / Startseiten-Spotlight --- */
+.banner-beacon {
+    position: fixed;
+    right: 24px;
+    top: 120px;
+    width: 240px;
+    z-index: 15;
+    transform: rotate(-1.2deg);
+    transform-origin: center;
+    transition: transform .4s ease;
+    filter: drop-shadow(0 14px 40px rgba(0,0,0,0.25));
+}
+
+.banner-beacon:hover {
+    transform: rotate(0deg) scale(1.02);
+}
+
+.banner-beacon__glow {
+    position: absolute;
+    inset: -18px;
+    background: radial-gradient(circle at 30% 20%, rgba(0,255,255,0.16), transparent 60%),
+                radial-gradient(circle at 80% 30%, rgba(255,0,180,0.14), transparent 62%),
+                linear-gradient(120deg, rgba(0,255,255,0.16), rgba(255,0,180,0.2));
+    filter: blur(18px);
+    opacity: 0.85;
+    border-radius: 24px;
+    pointer-events: none;
+}
+
+.banner-beacon__badge {
+    position: absolute;
+    top: -10px;
+    left: 12px;
+    background: linear-gradient(135deg, var(--accent-cyan), var(--accent-magenta));
+    color: #050618;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+}
+
+.banner-beacon__viewport {
+    position: relative;
+    overflow: hidden;
+    border-radius: 18px;
+    background: linear-gradient(165deg, rgba(9,13,38,0.9), rgba(9,13,38,0.7));
+    border: 1px solid rgba(255,255,255,0.12);
+    padding: 18px 18px 16px;
+    min-height: 170px;
+    backdrop-filter: blur(8px);
+}
+
+.banner-beacon__item {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    background: linear-gradient(140deg, rgba(11,17,54,0.8), rgba(16,24,70,0.65));
+    border-radius: 14px;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    border: 1px solid rgba(255,255,255,0.08);
+}
+
+.banner-beacon__item img {
+    max-width: 100%;
+    max-height: 120px;
+    object-fit: contain;
+    filter: drop-shadow(0 6px 14px rgba(0,0,0,0.35));
+}
+
+.banner-beacon__item figcaption {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: rgba(255,255,255,0.82);
+    text-align: center;
+}
+
+.banner-beacon__item.is-active {
+    position: relative;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+.banner-beacon__item.is-entering,
+.banner-beacon__item.is-leaving {
+    opacity: 1;
+    visibility: visible;
+}
+
+.banner-beacon__item.animate-slide.is-entering { animation: beaconSlideIn .55s ease; }
+.banner-beacon__item.animate-slide.is-leaving { animation: beaconSlideOut .42s ease forwards; }
+.banner-beacon__item.animate-tilt.is-entering { animation: beaconTiltIn .6s cubic-bezier(.2,.9,.35,1); }
+.banner-beacon__item.animate-tilt.is-leaving { animation: beaconTiltOut .4s ease forwards; }
+.banner-beacon__item.animate-zoom.is-entering { animation: beaconZoomIn .5s ease; }
+.banner-beacon__item.animate-zoom.is-leaving { animation: beaconZoomOut .42s ease forwards; }
+.banner-beacon__item.animate-blur.is-entering { animation: beaconBlurIn .55s ease; }
+.banner-beacon__item.animate-blur.is-leaving { animation: beaconBlurOut .45s ease forwards; }
+
+@keyframes beaconSlideIn {
+    from { transform: translateX(60%) rotate(-3deg) scale(0.9); opacity: 0; }
+    to { transform: translateX(0) rotate(0deg) scale(1); opacity: 1; }
+}
+
+@keyframes beaconSlideOut {
+    from { transform: translateX(0) scale(1); opacity: 1; }
+    to { transform: translateX(-30%) scale(0.9); opacity: 0; }
+}
+
+@keyframes beaconTiltIn {
+    from { transform: rotate(6deg) translateY(24px); opacity: 0; }
+    60% { transform: rotate(-2deg) translateY(-6px); opacity: 1; }
+    to { transform: rotate(0deg) translateY(0); opacity: 1; }
+}
+
+@keyframes beaconTiltOut {
+    from { transform: rotate(0deg) translateY(0); opacity: 1; }
+    to { transform: rotate(-6deg) translateY(-20px); opacity: 0; }
+}
+
+@keyframes beaconZoomIn {
+    from { transform: scale(0.8) translateY(16px); opacity: 0; filter: blur(6px); }
+    to { transform: scale(1) translateY(0); opacity: 1; filter: blur(0); }
+}
+
+@keyframes beaconZoomOut {
+    from { transform: scale(1) translateY(0); opacity: 1; }
+    to { transform: scale(0.86) translateY(-12px); opacity: 0; }
+}
+
+@keyframes beaconBlurIn {
+    from { transform: translateY(-12px); opacity: 0; filter: blur(10px); }
+    to { transform: translateY(0); opacity: 1; filter: blur(0); }
+}
+
+@keyframes beaconBlurOut {
+    from { transform: translateY(0); opacity: 1; filter: blur(0); }
+    to { transform: translateY(20px); opacity: 0; filter: blur(8px); }
+}
+
+@media (max-width: 960px) {
+    .banner-beacon {
+        position: relative;
+        top: auto;
+        right: auto;
+        width: 100%;
+        margin: -6px 0 14px;
+        transform: none;
+    }
+
+    .banner-beacon__viewport {
+        min-height: 140px;
+    }
+
+    .banner-beacon__badge {
+        left: 16px;
+    }
 }

@@ -1,9 +1,28 @@
 <?php
 session_start();
+require_once __DIR__ . '/config/db.php';
+require_once __DIR__ . '/includes/banner_service.php';
 require_once __DIR__ . '/includes/layout.php';
+
+ensureBannerSchema($pdo);
+$banners = fetchHomepageBanners($pdo, 12);
 
 renderHeader('Startseite', 'start');
 ?>
+<?php if ($banners): ?>
+    <aside class="banner-beacon" data-banner-rotator>
+        <div class="banner-beacon__glow"></div>
+        <div class="banner-beacon__badge">Spotlight</div>
+        <div class="banner-beacon__viewport" data-banner-viewport>
+            <?php foreach ($banners as $index => $banner): ?>
+                <figure class="banner-beacon__item<?= $index === 0 ? ' is-active' : '' ?>" data-banner-item>
+                    <img src="<?= htmlspecialchars($banner['image_path']) ?>" alt="<?= htmlspecialchars($banner['title'] ?? 'Partner-Banner') ?>">
+                    <figcaption><?= htmlspecialchars($banner['title'] ?? 'Partner-Banner') ?></figcaption>
+                </figure>
+            <?php endforeach; ?>
+        </div>
+    </aside>
+<?php endif; ?>
 <div class="card">
     <?php if (isset($_SESSION['user'])): ?>
         <h2>Willkommen zurück</h2>

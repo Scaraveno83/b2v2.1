@@ -12,6 +12,7 @@ function getAllPermissions() {
         'can_manage_users'            => 'Benutzer verwalten',
         'can_manage_partners'         => 'Partner verwalten',
         'can_change_settings'         => 'Einstellungen ändern',
+        'can_manage_banners'          => 'Startseiten-Banner verwalten',
         'can_manage_calendar'         => 'Kalender & Abwesenheiten verwalten',
         'can_access_admin'            => 'Adminbereich betreten',
         'can_view_dashboard'          => 'Dashboard sehen',
